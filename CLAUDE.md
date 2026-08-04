@@ -81,6 +81,8 @@ Trois champs pilotent un automatisme : `score`, `etat`, `soleil_direct`. Le rest
 
 Paramètres d'API : `lat`, `lon` (requis), `at`, `inclinaison`, `orientation`, `albedo`. Sans paramètre de surface, la surface est horizontale et la réponse est identique à celle d'avant l'ajout de l'orientation.
 
+Dans la page comme dans le prototype, les champs de surface sont **vides par défaut**. Vides → mesure du lieu, à plat, sans notion de surface visée. Orientation seule (ex. 329) → mur **vertical** tourné vers cette orientation ; une inclinaison saisie prime. `Number('')` valant 0 (piège n° 2), toute lecture de ces champs teste explicitement la chaîne vide.
+
 ---
 
 ## Conventions de calcul

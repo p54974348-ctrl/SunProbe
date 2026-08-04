@@ -60,14 +60,14 @@
       <div><label for="heure">Heure locale du point</label><input id="heure" type="time"></div>
     </div>
     <div class="champ duo">
+      <div><label for="orientation">Orientation du mur 0-360°</label>
+           <input id="orientation" type="number" min="0" max="360" step="1" placeholder="ex. 329"></div>
       <div><label for="inclinaison">Inclinaison 0-90°</label>
-           <input id="inclinaison" type="number" min="0" max="90" step="5" value="0"></div>
-      <div><label for="orientation">Orientation 0-360°</label>
-           <input id="orientation" type="number" min="0" max="360" step="5" value="180"></div>
+           <input id="inclinaison" type="number" min="0" max="90" step="5" placeholder="90 si mur"></div>
     </div>
     <p class="aide" style="margin:-4px 0 14px">
-      0° = horizontal (sol, toit plat). 90° = vertical (mur, fenêtre).
-      Orientation depuis le nord : 90 = est, 180 = sud, 270 = ouest.
+      Laissez vide pour mesurer le lieu, à plat. Une orientation (depuis le nord :
+      90 = est, 180 = sud, 270 = ouest) décrit un mur vertical.
     </p>
     <button id="go" type="submit">Mesurer</button>
   </form>
@@ -333,8 +333,11 @@ $('f').addEventListener('submit', async e => {
   $('go').disabled = true; $('go').textContent = 'Mesure en cours';
   $('errBloc').hidden = true;
   try {
-    const inc = borner(Number($('inclinaison').value)||0, 0, 90);
-    const ori = mod360(Number($('orientation').value)||0);
+    // Champs vides par defaut — et Number('') vaut 0 (piege n° 2) : tests explicites.
+    // Orientation seule -> mur vertical ; rien -> mesure du lieu, a plat.
+    const oriBrut = $('orientation').value.trim(), incBrut = $('inclinaison').value.trim();
+    const inc = incBrut !== '' ? borner(Number(incBrut)||0, 0, 90) : oriBrut !== '' ? 90 : 0;
+    const ori = oriBrut !== '' ? mod360(Number(oriBrut)||0) : 180;
     const s = await mesurer(saisie, $('date').value, $('heure').value, inc, ori);
     $('score').textContent = s.score;
     $('etat').textContent = s.etat;

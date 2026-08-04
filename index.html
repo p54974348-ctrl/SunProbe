@@ -48,19 +48,20 @@
           </div>
 
           <fieldset class="surface">
-            <legend>Surface visée</legend>
+            <legend>Mur visé — facultatif</legend>
             <div class="champ duo">
               <div>
-                <label for="inclinaison">Inclinaison</label>
-                <input id="inclinaison" type="number" min="0" max="90" step="5" value="0">
+                <label for="orientation">Orientation du mur</label>
+                <input id="orientation" type="number" min="0" max="360" step="1" placeholder="ex. 329">
               </div>
               <div>
-                <label for="orientation">Orientation</label>
-                <input id="orientation" type="number" min="0" max="360" step="5" value="180">
+                <label for="inclinaison">Inclinaison</label>
+                <input id="inclinaison" type="number" min="0" max="90" step="5" placeholder="90 si mur">
               </div>
             </div>
             <p class="aide" id="aide-surface">
-              0° = horizontal, le sol ou un toit plat. 90° = vertical, un mur ou une fenêtre.
+              Laissez vide pour mesurer le lieu, à plat. Une orientation (depuis le nord :
+              90 = E, 180 = S, 270 = O) décrit un mur vertical.
             </p>
           </fieldset>
 

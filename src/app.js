@@ -24,13 +24,35 @@ let derniereSortie = null;
 const borner = (v, min, max) => Math.min(max, Math.max(min, v));
 const mod360 = (v) => ((v % 360) + 360) % 360;
 
+/**
+ * Les deux champs sont vides par défaut — et `Number('')` vaut 0 (piège n° 2),
+ * d'où les tests explicites sur la chaîne vide.
+ *
+ *   rien de saisi          -> mesure du lieu, à plat : aucune surface visée ;
+ *   orientation seule      -> un mur : surface verticale (90°) vers cette orientation ;
+ *   inclinaison renseignée -> elle prime (toit incliné, panneau…).
+ */
 function lireSurface() {
-  const inclinaison = Number($('#inclinaison').value);
-  const orientation = Number($('#orientation').value);
+  const orientationBrut = $('#orientation').value.trim();
+  const inclinaisonBrut = $('#inclinaison').value.trim();
+  const aucune = orientationBrut === '' && inclinaisonBrut === '';
+
+  const orientation = Number(orientationBrut);
+  const inclinaison = Number(inclinaisonBrut);
+
+  const inclinaisonDeg =
+    inclinaisonBrut !== '' && Number.isFinite(inclinaison)
+      ? borner(inclinaison, 0, 90)
+      : orientationBrut !== '' ? 90 : CONFIG.surface.inclinaisonDeg;
+
   return {
-    inclinaisonDeg: Number.isFinite(inclinaison) ? borner(inclinaison, 0, 90) : 0,
-    orientationDeg: Number.isFinite(orientation) ? mod360(orientation) : 180,
+    inclinaisonDeg: aucune ? CONFIG.surface.inclinaisonDeg : inclinaisonDeg,
+    orientationDeg:
+      orientationBrut !== '' && Number.isFinite(orientation)
+        ? mod360(orientation)
+        : CONFIG.surface.orientationDeg,
     albedo: CONFIG.surface.albedo,
+    aucune,
   };
 }
 
@@ -114,7 +136,7 @@ function maintenantLocal() {
 
 function synchroniserAideSurface() {
   const s = lireSurface();
-  rafraichirAideSurface(s.inclinaisonDeg, s.orientationDeg, cardinal(s.orientationDeg));
+  rafraichirAideSurface(s.aucune, s.inclinaisonDeg, s.orientationDeg, cardinal(s.orientationDeg));
 }
 
 function initialiser() {

@@ -34,13 +34,14 @@ export function afficherAccueil() {
     'Saisissez une adresse ou des coordonnées, décrivez la surface, puis lancez la mesure.';
 }
 
-/** Rappel de l'orientation en clair, sous les champs du formulaire. */
-export function rafraichirAideSurface(inclinaisonDeg, orientationDeg, cardinal) {
-  $('#aide-surface').textContent =
-    inclinaisonDeg === 0
+/** Rappel de la surface en clair, sous les champs du formulaire. */
+export function rafraichirAideSurface(aucune, inclinaisonDeg, orientationDeg, cardinal) {
+  $('#aide-surface').textContent = aucune
+    ? 'Laissez vide pour mesurer le lieu, \u00e0 plat. Une orientation (depuis le nord : ' +
+      '90 = E, 180 = S, 270 = O) d\u00e9crit un mur vertical.'
+    : inclinaisonDeg === 0
       ? 'Surface horizontale : le sol, un toit plat. L\u2019orientation n\u2019a alors aucun effet.'
-      : `Surface inclinée à ${inclinaisonDeg}°, tournée vers ${orientationDeg}° (${cardinal}). ` +
-        '90° = mur ou fenêtre.';
+      : `Mur inclin\u00e9 à ${inclinaisonDeg}°, tourné vers ${orientationDeg}° (${cardinal}).`;
 }
 
 /**
