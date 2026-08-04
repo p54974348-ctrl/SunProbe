@@ -117,7 +117,7 @@ Accessibilité : chaque SVG porte un `aria-label` décrivant le résultat en cla
 ### Non vérifié
 
 - **Aucun appel réel à Open-Meteo.** Toutes les réponses sont simulées. La forme de la réponse vient de la documentation, pas d'une observation.
-- **Aucun déploiement réel.** Le nécessaire pour GitHub Pages est en place — `.nojekyll`, workflow `.github/workflows/pages.yml` (tests puis publication à chaque poussée sur `main`, après activation unique de Source « GitHub Actions » dans Settings → Pages), fonctionnement sous le sous-chemin `/SunProbe/` vérifié en local sous Chromium — mais le workflow n'a jamais tourné et la page publiée n'a jamais été visitée. La checklist de mise en ligne est en fin de `docs/HEBERGEMENT.md`.
+- **Page déployée, jamais visitée.** Le workflow `.github/workflows/pages.yml` a tourné avec succès le 04/08/2026 (run n° 1 : tests puis publication) : la page est en ligne sur `https://p54974348-ctrl.github.io/SunProbe/`. Elle n'a en revanche encore jamais été ouverte dans un navigateur — le réseau des sessions cloud ne joint pas `github.io`. Dérouler la checklist de fin de `docs/HEBERGEMENT.md` à la première occasion.
 
 Ces deux points sont la première chose à traiter dans une session disposant du réseau vers `api.open-meteo.com` ou d'un accès aux réglages d'hébergement.
 
