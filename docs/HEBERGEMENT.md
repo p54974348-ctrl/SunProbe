@@ -96,6 +96,23 @@ Quand Cloudflare résiste, Google Apps Script est le chemin de repli le plus cou
 - **Sonde programmée, sans applet « aller »** : renseigner les propriétés du script (`LAT`, `LON`, `ORIENTATION`, `INCLINAISON`, `IFTTT_EVENEMENT`, `IFTTT_CLE`) puis ajouter un déclencheur horaire sur `sondeProgrammee`. La mesure part vers IFTTT toutes les heures et la clé ne circule dans aucune URL.
 - Ce fichier duplique le noyau (Apps Script n'accepte pas les modules ES) : `tests/apps-script.test.mjs` garantit qu'il ne diverge pas des modules, comme pour le prototype.
 
+### Agent Dialogflow ES : demander l'ensoleillement en langage naturel
+
+La même URL `…/exec` sert de **webhook de fulfillment** : l'agent comprend la question, la sonde mesure et répond une phrase (« Sur le mur orienté NNO (333°) : soleil faible, score 38 sur 100… »).
+
+1. Prérequis : les propriétés du script `LAT`, `LON`, `ORIENTATION` sont renseignées (voir plus haut) — l'agent parle de *votre* façade.
+2. [dialogflow.cloud.google.com](https://dialogflow.cloud.google.com) → **Create Agent** — nom libre, langue **français**.
+3. **Fulfillment** (menu de gauche) → **Webhook** : *Enabled*, *URL* = votre `…/exec`, rien d'autre → **Save**.
+4. **Intents** → **Create Intent**, nom `Ensoleillement` :
+   - *Training phrases* : « quel est l'ensoleillement de la façade ? », « y a-t-il du soleil sur le mur ? », « la façade est-elle au soleil ? », « c'est ensoleillé ? »…
+   - Tout en bas, *Fulfillment* → **Enable webhook call for this intent** → **Save**.
+5. Tester dans le panneau de droite (« Try it now ») : taper une des phrases, la réponse de la sonde apparaît.
+6. Facultatif — viser une autre orientation à la voix : dans l'intention, ajouter un paramètre `orientation` (entité `@sys.number`, non requis) et des phrases du type « quel est l'ensoleillement du mur à 180 degrés ? ». Le paramètre prime alors sur la propriété `ORIENTATION`.
+
+Pour l'exposer : l'onglet **Integrations** propose notamment **Dialogflow Messenger**, un widget de discussion à coller dans n'importe quelle page web. À savoir : depuis 2023, Google a fermé le pont Dialogflow → Google Assistant — un agent ES ne se pilote plus à la voix depuis un Google Home ; pour déclencher la domotique, le chemin reste le pont IFTTT ci-dessus.
+
+Le webhook doit répondre en moins de 5 secondes : la mesure directe en prend bien moins, même sans cache.
+
 ## Option 3 — Netlify, Vercel, autres
 
 Le fichier `netlify.toml` est fourni : *publish directory* `.`, aucune commande de construction. Le glisser-déposer du dossier sur `app.netlify.com/drop` fonctionne aussi, sans compte Git.
