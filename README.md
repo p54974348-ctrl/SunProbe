@@ -73,6 +73,18 @@ La page ne rend alors que la sortie domotique, telle quelle. Sans le paramètre 
 
 **Le lien JSON est une sonde vivante** : il fige le lieu et la surface, jamais l'instant. À chaque chargement, la mesure est refaite à l'heure courante du point — c'est le lien à mettre en favori pour surveiller une façade. Pour figer un instant précis, ajoutez `date=AAAA-MM-JJ&heure=HH:MM` à l'URL.
 
+### Déclencher un Webhook IFTTT
+
+En mode JSON, deux paramètres arment le pont vers IFTTT :
+
+```
+…&format=json&ifttt_evenement=soleil_facade&ifttt_cle=VOTRE_CLE
+```
+
+À chaque chargement, une fois la mesure faite, la page déclenche l'événement `soleil_facade` de vos Webhooks IFTTT avec `value1` = score, `value2` = état, `value3` = soleil direct. Côté IFTTT : applet « Webhooks — Receive a web request », puis l'action de votre choix (volet, notification…). Le champ `webhook_ifttt` de la sortie affichée confirme l'envoi.
+
+Deux limites à connaître. La clé IFTTT est un **secret** : ne publiez pas une URL qui la porte. Et le sens inverse — IFTTT appelant la page — ne peut pas fonctionner : l'action « web request » d'IFTTT n'exécute pas de JavaScript et ignore le corps des réponses ; pour interroger la sonde depuis un serveur, utilisez le service Node ou la fonction Cloudflare.
+
 C'est un **affichage** : le document reste une page statique dont le JSON est produit par le navigateur. Un automatisme qui n'exécute pas de JavaScript doit interroger le service (`npm start`) ou la fonction Cloudflare, qui répondent en `application/json`.
 
 ## Continuer le développement ailleurs
@@ -87,7 +99,7 @@ Le dépôt doit être poussé sur GitHub — c'est le prérequis des sessions cl
 npm test
 ```
 
-170 vérifications, sans aucun accès réseau externe :
+175 vérifications, sans aucun accès réseau externe :
 
 - étanchéité des couches : le garde-fou `tests/architecture.test.mjs` fait échouer la suite si le noyau touche au réseau ou au DOM, ou si un seuil est codé en dur hors de `config.js` ;
 - position solaire recalée sur des repères astronomiques indépendants — hauteur aux deux solstices, heure du midi solaire, azimut plein sud dans l'hémisphère nord et plein nord à Sydney, soleil de minuit à Tromsø ;

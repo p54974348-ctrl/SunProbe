@@ -8,6 +8,7 @@ import { CONFIG } from './config.js';
 import { cardinal } from './core/solar-position.js';
 import { resoudrePoint } from './data/geocodage.js';
 import { ErreurReseau } from './data/http.js';
+import { declencherIFTTT } from './data/webhook-ifttt.js';
 import { sonder } from './sonde.js';
 import { initialiserCarte, placerMarqueur } from './ui/carte.js';
 import {
@@ -18,6 +19,9 @@ import {
 const $ = (sel) => document.querySelector(sel);
 
 let derniereSortie = null;
+
+/** Pont IFTTT, armé par les paramètres d'URL ifttt_evenement / ifttt_cle (mode JSON). */
+let webhookIFTTT = null;
 
 /* -------------------------------------------------------------- formulaire */
 
@@ -92,7 +96,13 @@ function construirePermalien(sortie) {
     p.set('inclinaison', sortie.surface.inclinaison_deg);
     p.set('orientation', sortie.surface.orientation_deg);
   }
-  if (lireFormat() === 'json') p.set('format', 'json');
+  if (lireFormat() === 'json') {
+    p.set('format', 'json');
+    if (webhookIFTTT) {
+      p.set('ifttt_evenement', webhookIFTTT.evenement);
+      p.set('ifttt_cle', webhookIFTTT.cle);
+    }
+  }
   u.search = p.toString();
   return u.toString();
 }
@@ -128,8 +138,26 @@ async function lancer(demande) {
 
     // Mode JSON : la sortie brute remplace la page, rien d'autre à dessiner.
     if (lireFormat() === 'json') {
-      history.replaceState(null, '', construirePermalien(resultat.sortie));
-      afficherJsonBrut(resultat.sortie);
+      const s = resultat.sortie;
+
+      // Pont IFTTT : les trois champs pilotes partent en value1/2/3.
+      // La réponse est opaque (no-cors) : « envoyée » ne veut pas dire « acceptée ».
+      let webhook = null;
+      if (webhookIFTTT) {
+        try {
+          await declencherIFTTT(webhookIFTTT.evenement, webhookIFTTT.cle, {
+            value1: s.score,
+            value2: s.etat,
+            value3: String(s.soleil_direct),
+          });
+          webhook = { evenement: webhookIFTTT.evenement, demande_envoyee: true };
+        } catch {
+          webhook = { evenement: webhookIFTTT.evenement, demande_envoyee: false };
+        }
+      }
+
+      history.replaceState(null, '', construirePermalien(s));
+      afficherJsonBrut(webhook ? { ...s, webhook_ifttt: webhook } : s);
       return;
     }
 
@@ -171,6 +199,9 @@ function initialiser() {
   if (params.has('inclinaison')) $('#inclinaison').value = params.get('inclinaison');
   if (params.has('orientation')) $('#orientation').value = params.get('orientation');
   if (params.get('format') === 'json') $('#format').value = 'json';
+  if (params.get('ifttt_evenement') && params.get('ifttt_cle')) {
+    webhookIFTTT = { evenement: params.get('ifttt_evenement'), cle: params.get('ifttt_cle') };
+  }
   synchroniserAideSurface();
 
   const lat = Number(params.get('lat'));
