@@ -133,7 +133,8 @@ body::before {
   margin-bottom: 6px;
 }
 
-.champ input {
+.champ input,
+.champ select {
   width: 100%;
   background: var(--nuit);
   border: 1px solid var(--trait);
@@ -145,10 +146,22 @@ body::before {
 }
 
 .champ input:focus-visible,
+.champ select:focus-visible,
 button:focus-visible,
 .lien:focus-visible {
   outline: 2px solid var(--zenith);
   outline-offset: 2px;
+}
+
+/* Mode JSON : la page s'efface, ne reste que la sortie. */
+.json-brut {
+  font-family: var(--data);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--givre);
+  padding: 24px;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }

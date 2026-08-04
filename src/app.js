@@ -8,16 +8,20 @@ import { CONFIG } from './config.js';
 import { cardinal } from './core/solar-position.js';
 import { resoudrePoint } from './data/geocodage.js';
 import { ErreurReseau } from './data/http.js';
+import { declencherIFTTT } from './data/webhook-ifttt.js';
 import { sonder } from './sonde.js';
 import { initialiserCarte, placerMarqueur } from './ui/carte.js';
 import {
   afficherResultat, afficherErreur, afficherChargement,
-  afficherAccueil, rafraichirAideSurface, copier,
+  afficherAccueil, afficherJsonBrut, rafraichirAideSurface, copier,
 } from './ui/rendu.js';
 
 const $ = (sel) => document.querySelector(sel);
 
 let derniereSortie = null;
+
+/** Pont IFTTT, armé par les paramètres d'URL ifttt_evenement / ifttt_cle (mode JSON). */
+let webhookIFTTT = null;
 
 /* -------------------------------------------------------------- formulaire */
 
@@ -65,19 +69,39 @@ function lireFormulaire() {
   };
 }
 
+/** Mode de réponse : « html » (la page) par défaut, « json » (sortie brute). */
+function lireFormat() {
+  return $('#format').value === 'json' ? 'json' : 'html';
+}
+
+/**
+ * Le lien HTML rejoue l'instant mesuré : il embarque date et heure.
+ * Le lien JSON est une sonde vivante : il fige le lieu et la surface,
+ * jamais l'instant — à chaque chargement, la mesure est refaite à
+ * l'heure courante du point.
+ */
 function construirePermalien(sortie) {
   const u = new URL(window.location.href);
   u.search = '';
   const p = new URLSearchParams({
     lat: sortie.point.latitude,
     lon: sortie.point.longitude,
-    date: sortie.horodatage_local.slice(0, 10),
-    heure: sortie.horodatage_local.slice(11, 16),
   });
+  if (lireFormat() !== 'json') {
+    p.set('date', sortie.horodatage_local.slice(0, 10));
+    p.set('heure', sortie.horodatage_local.slice(11, 16));
+  }
   if (sortie.point.libelle) p.set('lieu', sortie.point.libelle);
   if (sortie.surface.inclinaison_deg > 0) {
     p.set('inclinaison', sortie.surface.inclinaison_deg);
     p.set('orientation', sortie.surface.orientation_deg);
+  }
+  if (lireFormat() === 'json') {
+    p.set('format', 'json');
+    if (webhookIFTTT) {
+      p.set('ifttt_evenement', webhookIFTTT.evenement);
+      p.set('ifttt_cle', webhookIFTTT.cle);
+    }
   }
   u.search = p.toString();
   return u.toString();
@@ -92,7 +116,7 @@ async function lancer(demande) {
     afficherErreur('Indiquez une adresse, des coordonnées, ou cliquez sur la carte.');
     return;
   }
-  if (!d.date || !d.heure) {
+  if (!d.enDirect && (!d.date || !d.heure)) {
     afficherErreur('Renseignez une date et une heure.');
     return;
   }
@@ -104,23 +128,50 @@ async function lancer(demande) {
     const resultat = await sonder({
       latitude: lieu.latitude,
       longitude: lieu.longitude,
-      at: `${d.date}T${d.heure}`,
+      // Mesure en direct : at absent -> maintenant, dans le fuseau du point.
+      at: d.enDirect ? null : `${d.date}T${d.heure}`,
       surface: d.surface,
       libelle: lieu.libelle ?? null,
     });
 
     derniereSortie = resultat.sortie;
+
+    // Mode JSON : la sortie brute remplace la page, rien d'autre à dessiner.
+    if (lireFormat() === 'json') {
+      const s = resultat.sortie;
+
+      // Pont IFTTT : les trois champs pilotes partent en value1/2/3.
+      // La réponse est opaque (no-cors) : « envoyée » ne veut pas dire « acceptée ».
+      let webhook = null;
+      if (webhookIFTTT) {
+        try {
+          await declencherIFTTT(webhookIFTTT.evenement, webhookIFTTT.cle, {
+            value1: s.score,
+            value2: s.etat,
+            value3: String(s.soleil_direct),
+          });
+          webhook = { evenement: webhookIFTTT.evenement, demande_envoyee: true };
+        } catch {
+          webhook = { evenement: webhookIFTTT.evenement, demande_envoyee: false };
+        }
+      }
+
+      history.replaceState(null, '', construirePermalien(s));
+      afficherJsonBrut(webhook ? { ...s, webhook_ifttt: webhook } : s);
+      return;
+    }
+
     placerMarqueur(
       { latitude: resultat.sortie.point.latitude, longitude: resultat.sortie.point.longitude },
       true,
     );
     afficherResultat({ ...resultat, permalien: construirePermalien(resultat.sortie) });
   } catch (err) {
-    afficherErreur(
-      err instanceof ErreurReseau
-        ? err.message
-        : 'Erreur inattendue pendant la mesure. Réessayez dans un instant.',
-    );
+    const message = err instanceof ErreurReseau
+      ? err.message
+      : 'Erreur inattendue pendant la mesure. Réessayez dans un instant.';
+    if (lireFormat() === 'json') afficherJsonBrut({ erreur: message });
+    else afficherErreur(message);
     if (!(err instanceof ErreurReseau)) console.error(err);
   } finally {
     afficherChargement(false);
@@ -147,6 +198,10 @@ function initialiser() {
   $('#heure').value = params.get('heure') || now.heure;
   if (params.has('inclinaison')) $('#inclinaison').value = params.get('inclinaison');
   if (params.has('orientation')) $('#orientation').value = params.get('orientation');
+  if (params.get('format') === 'json') $('#format').value = 'json';
+  if (params.get('ifttt_evenement') && params.get('ifttt_cle')) {
+    webhookIFTTT = { evenement: params.get('ifttt_evenement'), cle: params.get('ifttt_cle') };
+  }
   synchroniserAideSurface();
 
   const lat = Number(params.get('lat'));
@@ -184,6 +239,8 @@ function initialiser() {
     lancer({
       ...lireFormulaire(),
       point: { latitude: lat, longitude: lon, libelle: params.get('lieu') },
+      // URL sans date ni heure : sonde vivante, mesurée à l'instant du chargement.
+      enDirect: !params.has('date') && !params.has('heure'),
     });
   } else {
     afficherAccueil();

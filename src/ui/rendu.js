@@ -13,8 +13,10 @@ const nb = (v, unite = '', decimales = 0) =>
   v === null || v === undefined || !Number.isFinite(v) ? '—' : `${v.toFixed(decimales)}${unite}`;
 
 export function afficherChargement(actif) {
-  $('#mesurer').disabled = actif;
-  $('#mesurer').innerHTML = actif ? '<span class="chargement"></span>Mesure en cours' : 'Mesurer';
+  const bouton = $('#mesurer');
+  if (!bouton) return; // mode JSON : la page ne contient plus le formulaire
+  bouton.disabled = actif;
+  bouton.innerHTML = actif ? '<span class="chargement"></span>Mesure en cours' : 'Mesurer';
 }
 
 export function afficherErreur(message) {
@@ -140,6 +142,19 @@ export function afficherResultat({ sortie, serieJour, indexJour, permalien }) {
 
   $('#sortie').textContent = JSON.stringify(sortie, null, 2);
   $('#permalien').dataset.url = permalien;
+}
+
+/**
+ * Mode JSON : la page entière s'efface au profit de la sortie brute,
+ * imprimée telle quelle. L'URL courante tient alors lieu de permalien.
+ * Sert aussi aux erreurs : passer { erreur: "…" }.
+ */
+export function afficherJsonBrut(objet) {
+  document.title = 'SunProbe — JSON';
+  const pre = document.createElement('pre');
+  pre.className = 'json-brut';
+  pre.textContent = JSON.stringify(objet, null, 2);
+  document.body.replaceChildren(pre);
 }
 
 /** Copie un texte et confirme brièvement dans le bouton. */
