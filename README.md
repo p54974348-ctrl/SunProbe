@@ -27,7 +27,7 @@ La page appelle Open-Meteo directement depuis le navigateur : **aucun serveur n'
 
 | Hébergeur | Page | API domotique | Mise en place |
 |---|---|---|---|
-| **GitHub Pages** | ✅ | ❌ | Settings → Pages → `main` / root |
+| **GitHub Pages** | ✅ | ❌ | Workflow fourni : Settings → Pages → Source « GitHub Actions » |
 | **Cloudflare Pages** | ✅ | ✅ | Connecter le dépôt, aucune commande de construction |
 | **Chez soi** (Pi, NAS) | ✅ | ✅ | `node server/sunprobe-api.mjs` |
 
