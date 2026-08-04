@@ -7,6 +7,7 @@
 
 import { positionSolaire } from './core/solar-position.js';
 import { evaluer } from './core/score.js';
+import { ensoleillementJournalier } from './core/ensoleillement.js';
 import { construireSortie } from './core/sortie-domotique.js';
 import { recupererIrradiance, selectionnerPas, serieDuJour } from './data/irradiance.js';
 
@@ -47,6 +48,16 @@ export async function sonder({ latitude, longitude, at = null, surface = {}, lib
     surface,
   });
 
+  const jourLocal = localVise.slice(0, 10);
+  const jour = serieDuJour(serie, jourLocal);
+
+  const ensoleillement = ensoleillementJournalier({
+    serieJour: jour,
+    latitude: point.latitude,
+    longitude: point.longitude,
+    surface: evaluation.surface,
+  });
+
   const sortie = construireSortie({
     point: { ...point, libelle },
     instant,
@@ -55,11 +66,9 @@ export async function sonder({ latitude, longitude, at = null, surface = {}, lib
     evaluation,
     mesures: { ghi: pas.ghi, dni: pas.dni, dhi: pas.dhi, nuages: pas.nuages },
     geometrie,
+    ensoleillement,
     fraicheur,
   });
-
-  const jourLocal = localVise.slice(0, 10);
-  const jour = serieDuJour(serie, jourLocal);
 
   return { sortie, serieJour: jour, indexJour: jour.indexOf(pas), point };
 }

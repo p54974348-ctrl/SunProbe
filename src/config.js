@@ -36,6 +36,18 @@ export const CONFIG = {
   },
 
   /**
+   * Ensoleillement journalier — part du jour où la face reçoit le soleil direct.
+   */
+  ensoleillement: {
+    /**
+     * Seuil d'éclairement direct normal (DNI, W/m²) à partir duquel on parle
+     * d'ensoleillement. 120 W/m² est la convention de l'OMM : en dessous,
+     * le soleil ne dessine plus d'ombre nette.
+     */
+    seuilDirectWm2: 120,
+  },
+
+  /**
    * Surface visée par défaut. Ces valeurs s'appliquent quand la requête
    * ne précise rien, et reproduisent alors le comportement d'origine.
    */

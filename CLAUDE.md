@@ -9,7 +9,7 @@ Réponds en français. Le code, les commentaires, les noms de variables et la do
 ## Commandes
 
 ```bash
-npm test        # suite complète, 155 vérifications, aucun accès réseau externe
+npm test        # suite complète, 170 vérifications, aucun accès réseau externe
 npm run serve   # page sur http://localhost:5173 (les modules ES exigent un serveur HTTP)
 npm start       # service JSON domotique sur http://localhost:8787
 ```
@@ -65,7 +65,7 @@ Chacun a coûté un bug réel. Les tests correspondants existent : ne pas les su
 
 3. **Les jeux de données de test doivent être physiquement cohérents** : `GHI = DNI·sin(h) + DHI`. Un triplet incohérent produit des écarts qu'on prend à tort pour des bugs. Utiliser l'assistant `coherent()` de `tests/plan.test.mjs`.
 
-4. **Le prototype duplique la logique du noyau**, volontairement (un seul fichier, zéro installation). `tests/prototype.test.mjs` extrait son script, l'exécute avec un DOM factice et compare ses résultats aux modules sur 150 configurations, écart toléré nul. **Toute modification de `src/core/plan.js`, `solar-position.js` ou `clear-sky.js` doit être répercutée dans `prototype/sunprobe-prototype.html`**, sinon ce test échoue — c'est son rôle.
+4. **Le prototype duplique la logique du noyau**, volontairement (un seul fichier, zéro installation). `tests/prototype.test.mjs` extrait son script, l'exécute avec un DOM factice et compare ses résultats aux modules sur 150 configurations, écart toléré nul. **Toute modification de `src/core/plan.js`, `solar-position.js`, `clear-sky.js` ou `ensoleillement.js` doit être répercutée dans `prototype/sunprobe-prototype.html`**, sinon ce test échoue — c'est son rôle.
 
 5. **Le plan horizontal est un cas particulier assumé.** Quand `inclinaison = 0`, `irradianceSurPlan()` renvoie le GHI mesuré tel quel plutôt que de le reconstruire depuis ses composantes. Ne pas « simplifier » en supprimant cette branche : elle garantit la rétrocompatibilité exacte des clients qui ne demandent aucune orientation.
 
@@ -77,9 +77,11 @@ Chacun a coûté un bug réel. Les tests correspondants existent : ne pas les su
 
 **On n'enlève jamais un champ et on ne change jamais le sens d'un champ existant sans incrémenter `version`.** Ajouter un champ reste rétrocompatible.
 
-Trois champs pilotent un automatisme : `score`, `etat`, `soleil_direct`. Le reste sert au diagnostic.
+Trois champs pilotent un automatisme : `score`, `etat`, `soleil_direct`. Le reste sert au diagnostic. `ensoleillement_jour` (part du jour où la face reçoit le soleil direct, seuil OMM dans `config.js`) est un ajout rétrocompatible : `pourcentage` vaut `null` en nuit polaire, pas 0.
 
 Paramètres d'API : `lat`, `lon` (requis), `at`, `inclinaison`, `orientation`, `albedo`. Sans paramètre de surface, la surface est horizontale et la réponse est identique à celle d'avant l'ajout de l'orientation.
+
+Dans la page comme dans le prototype, les champs de surface sont **vides par défaut**. Vides → mesure du lieu, à plat, sans notion de surface visée. Orientation seule (ex. 329) → mur **vertical** tourné vers cette orientation ; une inclinaison saisie prime. `Number('')` valant 0 (piège n° 2), toute lecture de ces champs teste explicitement la chaîne vide.
 
 ---
 
@@ -112,7 +114,7 @@ Accessibilité : chaque SVG porte un `aria-label` décrivant le résultat en cla
 
 ### Vérifié
 
-155 tests hors ligne : position solaire recalée sur des repères astronomiques indépendants (solstices, midi solaire, hémisphère sud, soleil de minuit), physique du plan orienté, seuils, sélection horaire, tracés SVG sans débordement, concordance prototype/modules, et les deux implémentations d'API.
+170 tests hors ligne : position solaire recalée sur des repères astronomiques indépendants (solstices, midi solaire, hémisphère sud, soleil de minuit), physique du plan orienté, ensoleillement journalier (murs orientés, nuit polaire, soleil de minuit), seuils, sélection horaire, tracés SVG sans débordement, concordance prototype/modules, et les deux implémentations d'API.
 
 ### Non vérifié
 

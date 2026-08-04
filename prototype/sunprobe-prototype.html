@@ -60,14 +60,14 @@
       <div><label for="heure">Heure locale du point</label><input id="heure" type="time"></div>
     </div>
     <div class="champ duo">
+      <div><label for="orientation">Orientation du mur 0-360°</label>
+           <input id="orientation" type="number" min="0" max="360" step="1" placeholder="ex. 329"></div>
       <div><label for="inclinaison">Inclinaison 0-90°</label>
-           <input id="inclinaison" type="number" min="0" max="90" step="5" value="0"></div>
-      <div><label for="orientation">Orientation 0-360°</label>
-           <input id="orientation" type="number" min="0" max="360" step="5" value="180"></div>
+           <input id="inclinaison" type="number" min="0" max="90" step="5" placeholder="90 si mur"></div>
     </div>
     <p class="aide" style="margin:-4px 0 14px">
-      0° = horizontal (sol, toit plat). 90° = vertical (mur, fenêtre).
-      Orientation depuis le nord : 90 = est, 180 = sud, 270 = ouest.
+      Laissez vide pour mesurer le lieu, à plat. Une orientation (depuis le nord :
+      90 = est, 180 = sud, 270 = ouest) décrit un mur vertical.
     </p>
     <button id="go" type="submit">Mesurer</button>
   </form>
@@ -172,6 +172,26 @@ function completerComposantes({ ghi, dni, dhi, hauteurDeg, instant }) {
   return { ghi, dni: isFinite(dni) ? dni : Math.max(0,(ghi-dhiE)/sinH), dhi: dhiE };
 }
 
+/* Part du jour ou la face recoit le soleil direct (seuil OMM : 120 W/m² de DNI).
+   La geometrie est evaluee au milieu de chaque pas horaire, le rayonnement
+   etant moyenne sur l'heure precedant l'estampille. */
+const SEUIL_ENSOLEILLEMENT_W_M2 = 120;
+function ensoleillementJournalier({ serieJour, latitude, longitude, inclinaisonDeg = 0, orientationDeg = 180 }) {
+  let dureeJourH = 0, dureeSoleilH = 0;
+  for (const pas of serieJour) {
+    const milieu = new Date(pas.instant.getTime() - 1800000);
+    const { hauteur, azimut } = positionSolaire(milieu, latitude, longitude);
+    if (hauteur <= 0) continue;
+    dureeJourH++;
+    if ((pas.dni ?? 0) < SEUIL_ENSOLEILLEMENT_W_M2) continue;
+    const cosTheta = Math.sin(hauteur*DEG)*Math.cos(inclinaisonDeg*DEG)
+      + Math.cos(hauteur*DEG)*Math.sin(inclinaisonDeg*DEG)*Math.cos((azimut-orientationDeg)*DEG);
+    if (cosTheta > 0) dureeSoleilH++;
+  }
+  return { pourcentage: dureeJourH === 0 ? null : Math.round(100*dureeSoleilH/dureeJourH),
+           duree_soleil_h: dureeSoleilH, duree_jour_h: dureeJourH };
+}
+
 function evaluer(plan, ghi, hauteurDeg) {
   const clair = ghiCielClair(hauteurDeg);
   const kc = clair < 5 ? null : Number(Math.min(1.15, (ghi||0)/clair).toFixed(3));
@@ -259,6 +279,13 @@ async function mesurer(saisie, date, heure, inclinaisonDeg, orientationDeg) {
     inclinaisonDeg, orientationDeg, instant });
   const ev = evaluer(plan, ghi, geo.hauteur);
 
+  const ens = ensoleillementJournalier({
+    serieJour: h.time.map((t, k) => ({ t, k })).filter(x => x.t.startsWith(date))
+      .map(x => ({ instant: new Date(Date.parse(x.t + ':00Z') - decalage*1000),
+                   dni: h.direct_normal_irradiance?.[x.k] })),
+    latitude: d.latitude, longitude: d.longitude, inclinaisonDeg, orientationDeg,
+  });
+
   return {
     version: 1,
     horodatage_utc: instant.toISOString(),
@@ -271,6 +298,7 @@ async function mesurer(saisie, date, heure, inclinaisonDeg, orientationDeg) {
     etat: ev.etat,
     score: ev.score,
     soleil_direct: ev.direct,
+    ensoleillement_jour: ens,
     mesures: {
       irradiance_surface_w_m2: Math.round(plan.poa),
       surface_direct_w_m2: Math.round(plan.direct),
@@ -305,8 +333,11 @@ $('f').addEventListener('submit', async e => {
   $('go').disabled = true; $('go').textContent = 'Mesure en cours';
   $('errBloc').hidden = true;
   try {
-    const inc = borner(Number($('inclinaison').value)||0, 0, 90);
-    const ori = mod360(Number($('orientation').value)||0);
+    // Champs vides par defaut — et Number('') vaut 0 (piege n° 2) : tests explicites.
+    // Orientation seule -> mur vertical ; rien -> mesure du lieu, a plat.
+    const oriBrut = $('orientation').value.trim(), incBrut = $('inclinaison').value.trim();
+    const inc = incBrut !== '' ? borner(Number(incBrut)||0, 0, 90) : oriBrut !== '' ? 90 : 0;
+    const ori = oriBrut !== '' ? mod360(Number(oriBrut)||0) : 180;
     const s = await mesurer(saisie, $('date').value, $('heure').value, inc, ori);
     $('score').textContent = s.score;
     $('etat').textContent = s.etat;
@@ -325,6 +356,8 @@ $('f').addEventListener('submit', async e => {
       ['dont direct', val(s.mesures.surface_direct_w_m2,' W/m²')],
       ['dont diffus', val(s.mesures.surface_diffus_w_m2,' W/m²')],
       ['dont sol', val(s.mesures.surface_sol_w_m2,' W/m²')],
+      ['Soleil du jour', s.ensoleillement_jour.pourcentage == null ? '—'
+        : `${s.ensoleillement_jour.pourcentage} % · ${s.ensoleillement_jour.duree_soleil_h} h/${s.ensoleillement_jour.duree_jour_h} h`],
       ['Incidence', val(s.geometrie.angle_incidence_deg,'°',0)],
       ['Hauteur', val(s.geometrie.hauteur_deg,'°',1)],
       ['Azimut', val(s.geometrie.azimut_deg,'°',0)],
@@ -334,6 +367,8 @@ $('f').addEventListener('submit', async e => {
       ['DNI', val(s.mesures.dni_w_m2,' W/m²')],
       ['DHI', val(s.mesures.dhi_w_m2,' W/m²')],
       ['Nuages', val(s.mesures.couverture_nuageuse_pct,' %')],
+      ['Soleil du jour', s.ensoleillement_jour.pourcentage == null ? '—'
+        : `${s.ensoleillement_jour.pourcentage} % · ${s.ensoleillement_jour.duree_soleil_h} h/${s.ensoleillement_jour.duree_jour_h} h`],
       ['Hauteur', val(s.geometrie.hauteur_deg,'°',1)],
       ['Azimut', val(s.geometrie.azimut_deg,'°',0)],
       ['Ciel clair', val(s.geometrie.ghi_ciel_clair_w_m2,' W/m²')],

@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { positionSolaire } from '../src/core/solar-position.js';
 import { irradianceSurPlan, completerComposantes, incidence } from '../src/core/plan.js';
 import { ghiCielClair } from '../src/core/clear-sky.js';
+import { ensoleillementJournalier } from '../src/core/ensoleillement.js';
 
 const ok = (n, c, i = '') => { console.log(`${c ? 'PASS' : 'ECHEC'}  ${n} ${i}`); if (!c) process.exitCode = 1; };
 
@@ -29,7 +30,7 @@ const document = {
   getElementById: (id) => { if (!elements.has(id)) elements.set(id, faux()); return elements.get(id); },
 };
 
-const executer = new Function('document', `${script}\n; return { positionSolaire, ghiCielClair, irradianceSurPlan, completerComposantes, evaluer };`);
+const executer = new Function('document', `${script}\n; return { positionSolaire, ghiCielClair, irradianceSurPlan, completerComposantes, evaluer, ensoleillementJournalier };`);
 const proto = executer(document);
 ok('prototype : script executable avec un DOM factice', typeof proto.positionSolaire === 'function');
 
@@ -78,3 +79,21 @@ ok('angle d\'incidence coherent entre les deux',
    Math.abs(incidence(40, 200, 90, 180).angleDeg
      - proto.irradianceSurPlan({ ghi: 1, dni: 1, dhi: 1, hauteurDeg: 40, azimutSoleilDeg: 200,
          inclinaisonDeg: 90, orientationDeg: 180, instant: new Date() }).angle) < 1e-9);
+
+// Ensoleillement journalier : memes journees synthetiques, memes resultats.
+let ensOk = true;
+for (const [mois, decalageH] of [[5, 2], [11, 1]]) {
+  const serie = Array.from({ length: 24 }, (_, h) => ({
+    instant: new Date(Date.UTC(2026, mois, 15, h) - decalageH * 3600000),
+    dni: h % 3 === 0 ? 40 : 600, // une heure sur trois sous le seuil
+  }));
+  for (const [inc, ori] of [[0, 180], [90, 180], [90, 0], [90, 333], [45, 270]]) {
+    const a = ensoleillementJournalier({ serieJour: serie, latitude: lat, longitude: lon,
+      surface: { inclinaisonDeg: inc, orientationDeg: ori } });
+    const b = proto.ensoleillementJournalier({ serieJour: serie, latitude: lat, longitude: lon,
+      inclinaisonDeg: inc, orientationDeg: ori });
+    if (a.pourcentage !== b.pourcentage || a.dureeSoleilH !== b.duree_soleil_h
+        || a.dureeJourH !== b.duree_jour_h) ensOk = false;
+  }
+}
+ok('ensoleillement journalier identique entre prototype et modules', ensOk);

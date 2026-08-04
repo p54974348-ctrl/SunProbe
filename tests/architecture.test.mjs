@@ -37,6 +37,11 @@ if (/\b(60|20|900)\b\s*[;,)]/.test(score.replace(/\/\*[\s\S]*?\*\//g, ''))) {
   console.log('ECHEC  src/core/score.js — seuil codé en dur, il doit venir de src/config.js');
   fautes++;
 }
+const ensoleillement = readFileSync(new URL('../src/core/ensoleillement.js', import.meta.url), 'utf8');
+if (/\b120\b/.test(ensoleillement.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, ''))) {
+  console.log('ECHEC  src/core/ensoleillement.js — seuil codé en dur, il doit venir de src/config.js');
+  fautes++;
+}
 
 console.log(fautes === 0
   ? 'PASS  étanchéité des couches respectée'
