@@ -191,6 +191,16 @@ function lireParametres(p) {
 
 /* ------------------------------------------------------------------ mesure */
 
+/* Mémo d'exécution : plusieurs sondes du même point partagent la même
+   réponse Open-Meteo — 7 façades d'un bâtiment = 1 appel à la source. */
+const memoPrevisions = {};
+function recupererPrevisions(url) {
+  if (!(url in memoPrevisions)) {
+    memoPrevisions[url] = JSON.parse(UrlFetchApp.fetch(url).getContentText());
+  }
+  return memoPrevisions[url];
+}
+
 function mesurer({ latitude, longitude, at, inclinaisonDeg, orientationDeg, albedo }) {
   const aujourdhui = new Date().toISOString().slice(0, 10);
   const dateVisee = at ? at.slice(0, 10) : aujourdhui;
@@ -204,7 +214,7 @@ function mesurer({ latitude, longitude, at, inclinaisonDeg, orientationDeg, albe
     + '&timezone=auto&forecast_days=' + Math.min(16, Math.max(2, ecart + 2))
     + (ecart < 0 ? '&past_days=' + Math.min(92, Math.abs(ecart) + 1) : '');
 
-  const d = JSON.parse(UrlFetchApp.fetch(requete).getContentText());
+  const d = recupererPrevisions(requete);
   if (d.error) throw new Error(d.reason || 'Requête refusée par la source.');
   const h = d.hourly;
   if (!h || !h.time || !h.time.length) throw new Error('La source n’a renvoyé aucune donnée.');
@@ -329,26 +339,134 @@ function doGet(e) {
   }
 }
 
+/* -------------------------------------------------------------- phrase
+   La sortie dite en une phrase — le corps des notifications ntfy. */
+
+/** La sortie de la sonde, dite en une phrase. */
+function phraseSortie(s) {
+  const nom = s.point && s.point.libelle ? s.point.libelle + ' — ' : '';
+  const ou = nom + (s.surface.inclinaison_deg > 0
+    ? 'Sur le mur orienté ' + s.surface.orientation_cardinal
+      + ' (' + s.surface.orientation_deg + '°)'
+    : 'Sur le lieu, à plat');
+  let phrase = ou + ' : ' + s.etat + ', score ' + s.score + ' sur 100. ';
+  phrase += s.soleil_direct
+    ? 'Le soleil frappe la face. '
+    : 'Pas de soleil direct sur la face. ';
+  const e = s.ensoleillement_jour;
+  if (e && e.pourcentage !== null) {
+    phrase += 'Aujourd’hui, la face reçoit le soleil direct ' + e.pourcentage
+      + ' % du jour (' + e.duree_soleil_h + ' h sur ' + e.duree_jour_h + ' h de jour).';
+  }
+  return phrase;
+}
+
 /**
- * Sonde programmée : à brancher sur un déclencheur horaire Apps Script.
- * Lit le point, la surface et le Webhook dans les propriétés du script
- * (LAT, LON, ORIENTATION, INCLINAISON, IFTTT_EVENEMENT, IFTTT_CLE) :
- * rien à appeler de l'extérieur, la clé IFTTT ne circule dans aucune URL.
+ * Sondes programmées : à brancher sur un déclencheur horaire Apps Script.
+ *
+ * Une sonde (propriétés LAT, LON, ORIENTATION, INCLINAISON) ou plusieurs :
+ * la propriété SONDES accepte un tableau JSON, une entrée par surface —
+ * sept façades ne coûtent qu'un appel à la source si elles partagent le
+ * même point :
+ *
+ *   [{"nom":"facade_no","lat":49.54,"lon":1.10,"orientation":333},
+ *    {"nom":"toit","lat":49.54,"lon":1.10,"inclinaison":30,"orientation":180}]
+ *
+ * (orientation seule -> mur vertical, comme partout ; albedo facultatif ;
+ *  "evenement" facultatif : Webhook IFTTT propre à cette sonde, à chaque
+ *  mesure, au lieu du IFTTT_EVENEMENT global.)
+ *
+ * Canaux de restitution, tous facultatifs, tous gratuits :
+ *   - IFTTT_EVENEMENT + IFTTT_CLE : Webhook à CHAQUE mesure de chaque sonde ;
+ *   - IFTTT_EVENEMENT_ETAT (+ IFTTT_CLE) : au changement d'état d'une sonde,
+ *     événement nommé par la sonde et l'état (ex. sonde_facade_no_plein_soleil)
+ *     — une applet IFTTT gratuite par cas utile, chacune activant sa scène
+ *     SmartLife, elle-même visible dans Google Home ;
+ *   - NTFY_SUJET : au changement d'état, notification mobile via ntfy.sh —
+ *     gratuit, sans compte : installer l'appli ntfy et s'abonner au sujet.
+ *     Le sujet fait office de secret : en choisir un impossible à deviner.
+ *
+ * Mémoire d'état par sonde dans ETAT_PRECEDENT[_nom] : pas d'alerte
+ * horaire répétitive quand rien ne change.
  */
+function listeDesSondes(prop) {
+  const brut = prop.getProperty('SONDES');
+  if (!brut) {
+    return [{
+      nom: null,
+      lat: prop.getProperty('LAT'),
+      lon: prop.getProperty('LON'),
+      orientation: prop.getProperty('ORIENTATION') ?? undefined,
+      inclinaison: prop.getProperty('INCLINAISON')
+        ?? (prop.getProperty('ORIENTATION') ? '90' : undefined),
+      evenement: null,
+    }];
+  }
+  const tableau = JSON.parse(brut);
+  if (!Array.isArray(tableau) || tableau.length === 0) {
+    throw new Error('SONDES doit être un tableau JSON non vide.');
+  }
+  return tableau.map((s, i) => ({
+    nom: s.nom ?? 'sonde' + (i + 1),
+    lat: s.lat,
+    lon: s.lon,
+    orientation: s.orientation ?? undefined,
+    inclinaison: s.inclinaison ?? (s.orientation !== undefined ? '90' : undefined),
+    albedo: s.albedo ?? undefined,
+    evenement: s.evenement ?? null,
+  }));
+}
+
 function sondeProgrammee() {
   const prop = PropertiesService.getScriptProperties();
-  const lecture = lireParametres({
-    lat: prop.getProperty('LAT'),
-    lon: prop.getProperty('LON'),
-    orientation: prop.getProperty('ORIENTATION') ?? undefined,
-    inclinaison: prop.getProperty('INCLINAISON')
-      ?? (prop.getProperty('ORIENTATION') ? '90' : undefined),
-  });
-  if (lecture.erreur) throw new Error(lecture.erreur);
-
-  const sortie = mesurer(lecture.valeurs);
-  const evenement = prop.getProperty('IFTTT_EVENEMENT');
   const cle = prop.getProperty('IFTTT_CLE');
-  if (evenement && cle) declencherIFTTT(evenement, cle, sortie);
-  return sortie;
+  const evenementMesure = prop.getProperty('IFTTT_EVENEMENT');
+  const baseEtat = prop.getProperty('IFTTT_EVENEMENT_ETAT');
+  const sujetNtfy = prop.getProperty('NTFY_SUJET');
+  const sondes = listeDesSondes(prop);
+
+  const sorties = [];
+  for (const s of sondes) {
+    const lecture = lireParametres({
+      lat: s.lat, lon: s.lon,
+      orientation: s.orientation, inclinaison: s.inclinaison, albedo: s.albedo,
+    });
+    if (lecture.erreur) throw new Error((s.nom ? s.nom + ' : ' : '') + lecture.erreur);
+
+    const sortie = mesurer(lecture.valeurs);
+    sortie.point.libelle = s.nom; // le nom de la sonde voyage dans la sortie
+
+    const evenement = s.evenement ?? evenementMesure;
+    if (evenement && cle) declencherIFTTT(evenement, cle, sortie);
+
+    const cleEtat = 'ETAT_PRECEDENT' + (s.nom ? '_' + s.nom : '');
+    const precedent = prop.getProperty(cleEtat);
+    prop.setProperty(cleEtat, sortie.etat);
+
+    if (sortie.etat !== precedent) {
+      // Événement nommé par la sonde et l'état : le nom porte le tri,
+      // aucune applet IFTTT n'a besoin du filter code payant.
+      if (baseEtat && cle) {
+        declencherIFTTT(
+          baseEtat + (s.nom ? '_' + s.nom : '') + '_' + sortie.etat.replace(/ /g, '_'),
+          cle, sortie,
+        );
+      }
+      if (sujetNtfy) {
+        // L'en-tête Title doit rester en ASCII ; les accents vont dans le corps.
+        const titre = ('SunProbe ' + (s.nom ? s.nom + ' ' : '') + ': ' + sortie.etat)
+          .replace(/[^\x20-\x7e]/g, '-');
+        UrlFetchApp.fetch('https://ntfy.sh/' + encodeURIComponent(sujetNtfy), {
+          method: 'post',
+          payload: phraseSortie(sortie),
+          headers: { Title: titre },
+        });
+      }
+    }
+
+    sorties.push(sortie);
+  }
+
+  // Une sonde unique (mode historique) rend l'objet nu ; plusieurs, le tableau.
+  return prop.getProperty('SONDES') ? sorties : sorties[0];
 }

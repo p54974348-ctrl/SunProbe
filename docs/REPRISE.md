@@ -53,7 +53,7 @@ La suite de tests tournant entièrement hors ligne, la majorité des tâches n'a
 Depuis le dossier du dépôt cloné :
 
 ```bash
-npm test        # doit afficher 195 PASS et 0 ECHEC
+npm test        # doit afficher 203 PASS et 0 ECHEC
 npm run serve   # http://localhost:5173
 ```
 
