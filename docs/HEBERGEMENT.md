@@ -79,6 +79,23 @@ La fonction ne répondra plus que dans un rayon d'environ 5 km autour des points
 
 ---
 
+## Option 2 bis — Google Apps Script : l'API seule, chez Google
+
+Quand Cloudflare résiste, Google Apps Script est le chemin de repli le plus court pour une **API publique gratuite** — pas de compte supplémentaire si vous avez un compte Google, pas de carte bancaire, pas de serveur. Seule l'API y vit : la page reste sur GitHub Pages.
+
+1. https://script.google.com → **Nouveau projet**.
+2. Coller l'intégralité de `apps-script/sunprobe.gs` à la place du contenu.
+3. **Déployer** → **Nouveau déploiement** → type **Application Web** : *Exécuter en tant que* **Moi**, *Accès* **Tout le monde**.
+4. Copier l'URL `…/exec`. L'API répond sur `…/exec?lat=49.4431&lon=1.0993&orientation=329`, avec les mêmes paramètres et la même sortie que les autres API — pont IFTTT compris.
+
+À savoir :
+
+- Google répond par une **redirection 302** vers `googleusercontent.com` : le client doit la suivre (`curl -L` ; IFTTT et Home Assistant le font d'eux-mêmes).
+- Pas de code de statut personnalisé : les erreurs reviennent en `200` avec un corps `{ "erreur": … }`.
+- Quotas du compte gratuit : 20 000 appels sortants/jour, 90 min d'exécution/jour — très au-dessus d'un usage domotique. Le cache interne (5 min) ménage aussi le quota Open-Meteo.
+- **Sonde programmée, sans applet « aller »** : renseigner les propriétés du script (`LAT`, `LON`, `ORIENTATION`, `INCLINAISON`, `IFTTT_EVENEMENT`, `IFTTT_CLE`) puis ajouter un déclencheur horaire sur `sondeProgrammee`. La mesure part vers IFTTT toutes les heures et la clé ne circule dans aucune URL.
+- Ce fichier duplique le noyau (Apps Script n'accepte pas les modules ES) : `tests/apps-script.test.mjs` garantit qu'il ne diverge pas des modules, comme pour le prototype.
+
 ## Option 3 — Netlify, Vercel, autres
 
 Le fichier `netlify.toml` est fourni : *publish directory* `.`, aucune commande de construction. Le glisser-déposer du dossier sur `app.netlify.com/drop` fonctionne aussi, sans compte Git.

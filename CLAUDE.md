@@ -9,7 +9,7 @@ Réponds en français. Le code, les commentaires, les noms de variables et la do
 ## Commandes
 
 ```bash
-npm test        # suite complète, 183 vérifications, aucun accès réseau externe
+npm test        # suite complète, 195 vérifications, aucun accès réseau externe
 npm run serve   # page sur http://localhost:5173 (les modules ES exigent un serveur HTTP)
 npm start       # service JSON domotique sur http://localhost:8787
 ```
@@ -65,7 +65,7 @@ Chacun a coûté un bug réel. Les tests correspondants existent : ne pas les su
 
 3. **Les jeux de données de test doivent être physiquement cohérents** : `GHI = DNI·sin(h) + DHI`. Un triplet incohérent produit des écarts qu'on prend à tort pour des bugs. Utiliser l'assistant `coherent()` de `tests/plan.test.mjs`.
 
-4. **Le prototype duplique la logique du noyau**, volontairement (un seul fichier, zéro installation). `tests/prototype.test.mjs` extrait son script, l'exécute avec un DOM factice et compare ses résultats aux modules sur 150 configurations, écart toléré nul. **Toute modification de `src/core/plan.js`, `solar-position.js`, `clear-sky.js` ou `ensoleillement.js` doit être répercutée dans `prototype/sunprobe-prototype.html`**, sinon ce test échoue — c'est son rôle.
+4. **Le prototype et la version Google Apps Script dupliquent la logique du noyau**, volontairement (un seul fichier chacun — zéro installation pour l'un, pas de modules ES chez Google pour l'autre). `tests/prototype.test.mjs` et `tests/apps-script.test.mjs` extraient leur script et comparent leurs résultats aux modules, écart toléré nul. **Toute modification de `src/core/plan.js`, `solar-position.js`, `clear-sky.js` ou `ensoleillement.js` doit être répercutée dans `prototype/sunprobe-prototype.html` et `apps-script/sunprobe.gs`**, sinon ces tests échouent — c'est leur rôle.
 
 5. **Le plan horizontal est un cas particulier assumé.** Quand `inclinaison = 0`, `irradianceSurPlan()` renvoie le GHI mesuré tel quel plutôt que de le reconstruire depuis ses composantes. Ne pas « simplifier » en supprimant cette branche : elle garantit la rétrocompatibilité exacte des clients qui ne demandent aucune orientation.
 
@@ -120,7 +120,7 @@ Accessibilité : chaque SVG porte un `aria-label` décrivant le résultat en cla
 
 ### Vérifié
 
-183 tests hors ligne : position solaire recalée sur des repères astronomiques indépendants (solstices, midi solaire, hémisphère sud, soleil de minuit), physique du plan orienté, ensoleillement journalier (murs orientés, nuit polaire, soleil de minuit), seuils, sélection horaire, tracés SVG sans débordement, concordance prototype/modules, et les deux implémentations d'API.
+195 tests hors ligne : position solaire recalée sur des repères astronomiques indépendants (solstices, midi solaire, hémisphère sud, soleil de minuit), physique du plan orienté, ensoleillement journalier (murs orientés, nuit polaire, soleil de minuit), seuils, sélection horaire, tracés SVG sans débordement, concordance prototype/modules, et les deux implémentations d'API.
 
 ### Non vérifié
 

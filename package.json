@@ -10,7 +10,7 @@
   "scripts": {
     "start": "node server/sunprobe-api.mjs",
     "serve": "npx --yes serve . -l 5173",
-    "test": "node tests/architecture.test.mjs && node tests/noyau.test.mjs && node tests/plan.test.mjs && node tests/ensoleillement.test.mjs && node tests/webhook.test.mjs && node tests/courbe.test.mjs && node tests/boussole.test.mjs && node tests/chaine.test.mjs && node tests/prototype.test.mjs && node tests/cloudflare.test.mjs && node tests/serveur.test.mjs"
+    "test": "node tests/architecture.test.mjs && node tests/noyau.test.mjs && node tests/plan.test.mjs && node tests/ensoleillement.test.mjs && node tests/webhook.test.mjs && node tests/courbe.test.mjs && node tests/boussole.test.mjs && node tests/chaine.test.mjs && node tests/prototype.test.mjs && node tests/apps-script.test.mjs && node tests/cloudflare.test.mjs && node tests/serveur.test.mjs"
   },
   "keywords": [
     "solaire",
