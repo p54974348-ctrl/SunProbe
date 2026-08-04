@@ -7,7 +7,8 @@
  * vérifiable sans lire une seule valeur.
  */
 
-const T = 190; // côté du carré SVG
+const T = 190; // côté du cadran
+const H = T + 16; // hauteur totale : le libellé a sa bande sous le cadran, hors des cardinaux
 const C = T / 2;
 const R = 74; // rayon du cadran
 
@@ -99,7 +100,7 @@ export function dessinerBoussole({
     (nuit ? '' : ` Soleil à ${Math.round(azimutSoleilDeg)} degrés.`);
 
   return `
-<svg class="boussole" viewBox="0 0 ${T} ${T}" preserveAspectRatio="xMidYMid meet"
+<svg class="boussole" viewBox="0 0 ${T} ${H}" preserveAspectRatio="xMidYMid meet"
      role="img" aria-label="${resume}">
   <circle cx="${C}" cy="${C}" r="${R}" fill="none" stroke="var(--trait)" stroke-width="1"/>
   ${graduations}
@@ -108,7 +109,7 @@ export function dessinerBoussole({
   ${soleil}
   <circle cx="${C}" cy="${C}" r="2.5" fill="var(--brume)"/>
   ${cardinaux}
-  <text x="${C}" y="${T - 4}" text-anchor="middle" font-size="10" font-family="var(--data)"
+  <text x="${C}" y="${H - 4}" text-anchor="middle" font-size="10" font-family="var(--data)"
         letter-spacing="0.08em" fill="${direct ? 'var(--flux)' : 'var(--brume)'}"
         >${etiquette.toUpperCase()}</text>
 </svg>`;

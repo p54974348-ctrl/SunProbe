@@ -116,11 +116,21 @@ Accessibilité : chaque SVG porte un `aria-label` décrivant le résultat en cla
 
 ### Non vérifié
 
-- **Aucun rendu visuel n'a jamais été testé** — la session qui a produit ce projet n'avait pas de navigateur. Structure et coordonnées SVG sont validées par calcul, l'apparence ne l'est pas.
 - **Aucun appel réel à Open-Meteo.** Toutes les réponses sont simulées. La forme de la réponse vient de la documentation, pas d'une observation.
 - **Aucun déploiement réel.** La checklist de mise en ligne est en fin de `docs/HEBERGEMENT.md`.
 
-Ces trois points sont la première chose à traiter dans une session disposant d'un réseau ou d'un navigateur.
+Ces deux points sont la première chose à traiter dans une session disposant du réseau vers `api.open-meteo.com` ou d'un accès aux réglages d'hébergement.
+
+### Rendu visuel : vérifié le 04/08/2026 (Chromium headless, données simulées)
+
+Page (accueil, mesure, formulaire, mobile 390 px) et prototype ouverts sous
+Chromium via Playwright, polices réelles, Leaflet servi localement, réponses
+Open-Meteo simulées avec le noyau du projet (triplets cohérents). Résultat :
+aucune erreur console, aucune exception, page et prototype rendent des valeurs
+identiques (58 / soleil faible sur le mur sud témoin). Un seul défaut trouvé et
+corrigé : le libellé sous la boussole chevauchait la lettre cardinale « S »
+(bande dédiée ajoutée dans `src/ui/boussole.js`). L'apparence sous un vrai
+réseau (tuiles OSM réelles, données réelles) reste à confirmer.
 
 ### Pistes ouvertes
 
