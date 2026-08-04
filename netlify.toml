@@ -1,0 +1,13 @@
+# Déploiement Netlify : site statique, aucune étape de construction.
+# Les fonctions Cloudflare (functions/) ne sont pas utilisées ici ;
+# pour l'API sur Netlify, voir docs/HEBERGEMENT.md.
+
+[build]
+  publish = "."
+  command = ""
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer"

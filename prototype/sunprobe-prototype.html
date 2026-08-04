@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SunProbe — prototype</title>
+<style>
+  :root { --nuit:#0e1220; --ardoise:#171e31; --trait:#2b3552; --brume:#8894b0;
+          --givre:#e9edf6; --flux:#ffb03a; --zenith:#6fd3e0; --alerte:#ff7a7a; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:28px 20px 60px; background:var(--nuit); color:var(--givre);
+         font:15px/1.5 system-ui,sans-serif; }
+  .page { max-width:620px; margin:0 auto; }
+  h1 { font-size:24px; letter-spacing:-.03em; margin:0 0 4px; }
+  h1 b { color:var(--flux); }
+  .sous { font:11px ui-monospace,monospace; letter-spacing:.16em; text-transform:uppercase;
+          color:var(--brume); margin:0 0 24px; }
+  label { display:block; font:10px ui-monospace,monospace; letter-spacing:.14em;
+          text-transform:uppercase; color:var(--brume); margin:0 0 6px; }
+  input { width:100%; background:var(--nuit); border:1px solid var(--trait); border-radius:4px;
+          color:var(--givre); font:14px ui-monospace,monospace; padding:10px 11px; }
+  input:focus-visible, button:focus-visible { outline:2px solid var(--zenith); outline-offset:2px; }
+  .champ { margin-bottom:14px; }
+  .duo { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+  button { width:100%; background:var(--flux); color:#1a1204; border:0; border-radius:4px;
+           font:600 13px ui-monospace,monospace; letter-spacing:.1em; text-transform:uppercase;
+           padding:12px; cursor:pointer; }
+  button[disabled] { opacity:.5; cursor:progress; }
+  .bloc { background:var(--ardoise); border:1px solid var(--trait); border-radius:4px;
+          padding:18px; margin-top:20px; }
+  .releve { display:flex; align-items:center; gap:22px; flex-wrap:wrap; }
+  .score { font:600 76px/.85 ui-monospace,monospace; color:var(--flux); font-variant-numeric:tabular-nums; }
+  .etat { font-size:26px; font-weight:800; text-transform:uppercase; margin:0; }
+  .lieu { font:12px ui-monospace,monospace; color:var(--brume); margin:4px 0 0; }
+  dl { display:grid; grid-template-columns:repeat(auto-fit,minmax(110px,1fr)); gap:1px;
+       background:var(--trait); border:1px solid var(--trait); border-radius:4px;
+       overflow:hidden; margin:18px 0 0; }
+  .m { background:var(--ardoise); padding:11px 12px; }
+  dt { font:9px ui-monospace,monospace; letter-spacing:.14em; text-transform:uppercase;
+       color:var(--brume); margin:0 0 5px; }
+  dd { font:16px ui-monospace,monospace; margin:0; font-variant-numeric:tabular-nums; }
+  pre { background:var(--nuit); border:1px solid var(--trait); border-radius:4px; padding:14px;
+        font:12px/1.55 ui-monospace,monospace; color:var(--zenith); overflow-x:auto; margin:0; }
+  .err { border-color:var(--alerte); color:var(--alerte); }
+  .aide { font:11px/1.55 ui-monospace,monospace; color:var(--brume); }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Sun<b>Probe</b></h1>
+  <p class="sous">Prototype · un seul fichier · aucune installation</p>
+
+  <form id="f">
+    <div class="champ">
+      <label for="lieu">Adresse ou coordonnées</label>
+      <input id="lieu" placeholder="Rouen · ou 49.4431, 1.0993" autocomplete="off">
+    </div>
+    <div class="champ duo">
+      <div><label for="date">Date</label><input id="date" type="date"></div>
+      <div><label for="heure">Heure locale du point</label><input id="heure" type="time"></div>
+    </div>
+    <div class="champ duo">
+      <div><label for="inclinaison">Inclinaison 0-90°</label>
+           <input id="inclinaison" type="number" min="0" max="90" step="5" value="0"></div>
+      <div><label for="orientation">Orientation 0-360°</label>
+           <input id="orientation" type="number" min="0" max="360" step="5" value="180"></div>
+    </div>
+    <p class="aide" style="margin:-4px 0 14px">
+      0° = horizontal (sol, toit plat). 90° = vertical (mur, fenêtre).
+      Orientation depuis le nord : 90 = est, 180 = sud, 270 = ouest.
+    </p>
+    <button id="go" type="submit">Mesurer</button>
+  </form>
+
+  <div class="bloc" id="sortieBloc" hidden>
+    <div class="releve">
+      <div class="score" id="score">—</div>
+      <div><p class="etat" id="etat">—</p><p class="lieu" id="lieu-out"></p></div>
+    </div>
+    <dl id="mesures"></dl>
+  </div>
+
+  <div class="bloc" id="jsonBloc" hidden>
+    <p class="aide" style="margin:0 0 12px">Sortie destinée à un scénario domotique</p>
+    <pre id="json"></pre>
+  </div>
+
+  <div class="bloc err" id="errBloc" hidden><span id="err"></span></div>
+
+  <p class="aide" style="margin-top:24px">
+    Données Open-Meteo (CC BY 4.0). Position du soleil calculée localement.
+  </p>
+</div>
+
+<script>
+/* ---------------------------------------------------------------- calcul */
+const DEG = Math.PI / 180, RAD = 180 / Math.PI;
+const borner = (v,a,b) => Math.min(b, Math.max(a, v));
+const mod360 = v => ((v % 360) + 360) % 360;
+
+function positionSolaire(instant, lat, lon) {
+  const n = instant.getTime()/86400000 + 2440587.5 - 2451545.0;
+  const L = mod360(280.46 + 0.9856474*n);
+  const g = mod360(357.528 + 0.9856003*n);
+  const lambda = L + 1.915*Math.sin(g*DEG) + 0.02*Math.sin(2*g*DEG);
+  const eps = 23.439 - 0.0000004*n;
+  const decl = Math.asin(borner(Math.sin(eps*DEG)*Math.sin(lambda*DEG),-1,1))*RAD;
+  const ra = Math.atan2(Math.cos(eps*DEG)*Math.sin(lambda*DEG), Math.cos(lambda*DEG))*RAD;
+  const eqt = (mod360(L - ra + 180) - 180) * 4;
+  const hUtc = instant.getUTCHours() + instant.getUTCMinutes()/60;
+  const tsv = (hUtc*60 + eqt + 4*lon + 1440) % 1440;
+  const H = tsv/4 - 180;
+  const sinAlt = Math.sin(lat*DEG)*Math.sin(decl*DEG)
+               + Math.cos(lat*DEG)*Math.cos(decl*DEG)*Math.cos(H*DEG);
+  const alt = Math.asin(borner(sinAlt,-1,1))*RAD;
+  const refr = alt < -1 ? 0 : 1.02/Math.tan((alt + 10.3/(alt+5.11))*DEG)/60;
+  let az = Math.acos(borner(
+    (Math.sin(decl*DEG) - Math.sin(alt*DEG)*Math.sin(lat*DEG))/(Math.cos(alt*DEG)*Math.cos(lat*DEG)),
+    -1, 1))*RAD;
+  if (H > 0) az = 360 - az;
+  return { hauteur: alt + refr, azimut: mod360(az) };
+}
+
+const cardinal = az => ['N','NNE','NE','ENE','E','ESE','SE','SSE',
+  'S','SSO','SO','OSO','O','ONO','NO','NNO'][Math.round(mod360(az)/22.5)%16];
+
+/* Modèle de Haurwitz : irradiance globale par ciel parfaitement clair. */
+const ghiCielClair = hauteurDeg => {
+  const c = Math.sin(hauteurDeg*DEG);
+  return c <= 0 ? 0 : 1098*c*Math.exp(-0.059/c);
+};
+
+const GHI_PLEINE_ECHELLE = 900;
+
+/* Constante solaire corrigee de la distance Terre-Soleil du jour. */
+function irradianceExtraterrestre(instant) {
+  const j = Math.floor((instant - Date.UTC(instant.getUTCFullYear(),0,1))/86400000) + 1;
+  return 1361 * (1 + 0.033*Math.cos(2*Math.PI*j/365));
+}
+
+/* Irradiance recue par un plan incline et oriente (modele de Hay-Davies). */
+function irradianceSurPlan({ ghi, dni, dhi, hauteurDeg, azimutSoleilDeg,
+                             inclinaisonDeg, orientationDeg, albedo = 0.2, instant }) {
+  const h = hauteurDeg*DEG, b = inclinaisonDeg*DEG;
+  const cosTheta = borner(Math.sin(h)*Math.cos(b)
+                   + Math.cos(h)*Math.sin(b)*Math.cos((azimutSoleilDeg-orientationDeg)*DEG), -1, 1);
+  const leve = hauteurDeg > 0, direct = leve && cosTheta > 0;
+  const angle = Math.acos(cosTheta)*RAD;
+
+  // Plan horizontal : la mesure EST deja la bonne grandeur.
+  if (inclinaisonDeg === 0)
+    return { poa: Math.max(0, ghi||0), direct:0, diffus:0, sol:0, angle, soleilDirect:direct };
+
+  const rapport = leve ? Math.max(0, cosTheta)/Math.max(0.02, Math.sin(h)) : 0;
+  const ani = leve ? borner((dni||0)/irradianceExtraterrestre(instant), 0, 1) : 0;
+  const d = direct ? (dni||0)*cosTheta : 0;
+  const df = Math.max(0, dhi||0) * (ani*rapport + (1-ani)*(1+Math.cos(b))/2);
+  const sol = Math.max(0, ghi||0) * albedo * (1-Math.cos(b))/2;
+  return { poa: Math.max(0, d+df+sol), direct:d, diffus:df, sol, angle, soleilDirect:direct };
+}
+
+/* Correlation d'Erbs : filet de securite si la source ne fournit pas DNI/DHI. */
+function completerComposantes({ ghi, dni, dhi, hauteurDeg, instant }) {
+  const sinH = Math.sin(hauteurDeg*DEG);
+  if (!isFinite(ghi) || sinH <= 0.02) return { ghi:ghi||0, dni:dni||0, dhi:dhi??Math.max(0,ghi||0) };
+  if (isFinite(dni) && isFinite(dhi)) return { ghi, dni, dhi };
+  const kt = borner(ghi/(irradianceExtraterrestre(instant)*sinH), 0, 1);
+  const fd = kt <= 0.22 ? 1-0.09*kt
+           : kt <= 0.8 ? 0.9511-0.1604*kt+4.388*kt**2-16.638*kt**3+12.336*kt**4
+           : 0.165;
+  const dhiE = isFinite(dhi) ? dhi : ghi*borner(fd,0,1);
+  return { ghi, dni: isFinite(dni) ? dni : Math.max(0,(ghi-dhiE)/sinH), dhi: dhiE };
+}
+
+function evaluer(plan, ghi, hauteurDeg) {
+  const clair = ghiCielClair(hauteurDeg);
+  const kc = clair < 5 ? null : Number(Math.min(1.15, (ghi||0)/clair).toFixed(3));
+  if (hauteurDeg <= -0.833) return { score:0, etat:'nuit', clair:0, kc:null, direct:false };
+  const score = Math.round(100 * Math.min(1, Math.max(0, plan.poa) / GHI_PLEINE_ECHELLE));
+  const etat = score >= 60 ? 'plein soleil' : score >= 20 ? 'soleil faible' : 'ombre';
+  return { score, etat, clair: Math.round(clair), kc, direct: plan.soleilDirect };
+}
+
+/* ---------------------------------------------------------------- réseau */
+async function json(url) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 8000);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal });
+    if (!r.ok) throw new Error(`Le service a répondu HTTP ${r.status}.`);
+    return await r.json();
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error("Le service n'a pas répondu en 8 s.");
+    throw new Error(e.message.startsWith('Le service') ? e.message
+                    : 'Connexion impossible. Vérifiez le réseau.');
+  } finally { clearTimeout(t); }
+}
+
+function lireCoordonnees(txt) {
+  const m = String(txt).trim().replace(/[;/]/g, ',')
+    .match(/^(-?\d{1,3}(?:[.,]\d+)?)[\s,]+(-?\d{1,3}(?:[.,]\d+)?)$/);
+  if (!m) return null;
+  const [la, lo] = [m[1], m[2]].map(v => Number(v.replace(',', '.')));
+  return Math.abs(la) <= 90 && Math.abs(lo) <= 180 ? { latitude: la, longitude: lo } : null;
+}
+
+async function resoudrePoint(saisie) {
+  const direct = lireCoordonnees(saisie);
+  if (direct) return { ...direct, libelle: null };
+  const d = await json('https://geocoding-api.open-meteo.com/v1/search?count=1&language=fr&format=json&name='
+    + encodeURIComponent(saisie));
+  const r = d.results && d.results[0];
+  if (!r) throw new Error(`Aucun lieu trouvé pour « ${saisie} ». Essayez des coordonnées.`);
+  return { latitude:r.latitude, longitude:r.longitude,
+           libelle:[r.name, r.admin1, r.country].filter(Boolean).join(', ') };
+}
+
+/* ------------------------------------------------------------- pipeline */
+async function mesurer(saisie, date, heure, inclinaisonDeg, orientationDeg) {
+  const p = await resoudrePoint(saisie);
+
+  const ecart = Math.round((Date.parse(date+'T12:00:00Z')
+    - Date.parse(new Date().toISOString().slice(0,10)+'T12:00:00Z')) / 86400000);
+  if (ecart < -92 || ecart > 15) throw new Error('Date hors portée : -92 à +15 jours.');
+
+  const u = new URL('https://api.open-meteo.com/v1/forecast');
+  u.search = new URLSearchParams({
+    latitude: p.latitude.toFixed(4), longitude: p.longitude.toFixed(4),
+    hourly: 'shortwave_radiation,direct_normal_irradiance,diffuse_radiation,cloud_cover',
+    timezone: 'auto',
+    forecast_days: String(Math.min(16, Math.max(2, ecart + 2))),
+    ...(ecart < 0 ? { past_days: String(Math.min(92, Math.abs(ecart) + 1)) } : {}),
+  });
+
+  const d = await json(u);
+  if (d.error) throw new Error(d.reason || 'Requête refusée par la source.');
+  const h = d.hourly;
+  if (!h || !h.time || !h.time.length) throw new Error("La source n'a renvoyé aucune donnée.");
+
+  // Le rayonnement est moyenné sur l'heure PRÉCÉDANT l'horodatage :
+  // on retient le premier pas dont l'estampille est >= à l'instant visé.
+  const vise = `${date}T${heure}`;
+  let i = h.time.findIndex(t => Date.parse(t + ':00Z') >= Date.parse(vise + ':00Z'));
+  let fraicheur = 'ok';
+  if (i === -1) { i = h.time.length - 1; fraicheur = 'approchee'; }
+  if (h.shortwave_radiation[i] === null) {
+    const j = [i-1, i+1, i-2, i+2].find(k => h.shortwave_radiation?.[k] != null);
+    if (j !== undefined) { i = j; fraicheur = 'approchee'; } else fraicheur = 'indisponible';
+  }
+
+  const decalage = d.utc_offset_seconds || 0;
+  const instant = new Date(Date.parse(vise + ':00Z') - decalage*1000);
+  const geo = positionSolaire(instant, d.latitude, d.longitude);
+  const ghi = h.shortwave_radiation[i] ?? 0;
+
+  const comp = completerComposantes({ ghi, dni:h.direct_normal_irradiance?.[i],
+    dhi:h.diffuse_radiation?.[i], hauteurDeg:geo.hauteur, instant });
+  const plan = irradianceSurPlan({ ...comp, hauteurDeg:geo.hauteur, azimutSoleilDeg:geo.azimut,
+    inclinaisonDeg, orientationDeg, instant });
+  const ev = evaluer(plan, ghi, geo.hauteur);
+
+  return {
+    version: 1,
+    horodatage_utc: instant.toISOString(),
+    horodatage_local: vise,
+    fuseau: d.timezone || null,
+    point: { latitude:+d.latitude.toFixed(5), longitude:+d.longitude.toFixed(5),
+             altitude_m: d.elevation ?? null, libelle: p.libelle },
+    surface: { inclinaison_deg: inclinaisonDeg, orientation_deg: orientationDeg,
+               orientation_cardinal: inclinaisonDeg > 0 ? cardinal(orientationDeg) : null },
+    etat: ev.etat,
+    score: ev.score,
+    soleil_direct: ev.direct,
+    mesures: {
+      irradiance_surface_w_m2: Math.round(plan.poa),
+      surface_direct_w_m2: Math.round(plan.direct),
+      surface_diffus_w_m2: Math.round(plan.diffus),
+      surface_sol_w_m2: Math.round(plan.sol),
+      ghi_w_m2: Math.round(ghi),
+      dni_w_m2: h.direct_normal_irradiance?.[i] == null ? null : Math.round(h.direct_normal_irradiance[i]),
+      dhi_w_m2: h.diffuse_radiation?.[i] == null ? null : Math.round(h.diffuse_radiation[i]),
+      couverture_nuageuse_pct: h.cloud_cover?.[i] ?? null,
+    },
+    geometrie: {
+      hauteur_deg:+geo.hauteur.toFixed(2), azimut_deg:+geo.azimut.toFixed(2),
+      azimut_cardinal: cardinal(geo.azimut),
+      angle_incidence_deg:+plan.angle.toFixed(2),
+      ghi_ciel_clair_w_m2: ev.clair, indice_ciel_clair: ev.kc,
+    },
+    source: 'open-meteo',
+    fraicheur,
+  };
+}
+
+/* ---------------------------------------------------------------- rendu */
+const $ = id => document.getElementById(id);
+const val = (v, u='', d=0) => v == null ? '—' : v.toFixed(d) + u;
+
+$('f').addEventListener('submit', async e => {
+  e.preventDefault();
+  const saisie = $('lieu').value.trim();
+  if (!saisie) return montrerErreur('Indiquez une adresse ou des coordonnées.');
+  if (!$('date').value || !$('heure').value) return montrerErreur('Renseignez une date et une heure.');
+
+  $('go').disabled = true; $('go').textContent = 'Mesure en cours';
+  $('errBloc').hidden = true;
+  try {
+    const inc = borner(Number($('inclinaison').value)||0, 0, 90);
+    const ori = mod360(Number($('orientation').value)||0);
+    const s = await mesurer(saisie, $('date').value, $('heure').value, inc, ori);
+    $('score').textContent = s.score;
+    $('etat').textContent = s.etat;
+    $('etat').style.color = { 'plein soleil':'var(--flux)', 'soleil faible':'#d8b26a',
+                              'ombre':'var(--brume)', 'nuit':'#5d6a8c' }[s.etat];
+    $('lieu-out').textContent =
+      `${s.point.libelle ? s.point.libelle + ' · ' : ''}${s.point.latitude}, ${s.point.longitude}`
+      + ` · ${s.horodatage_local.replace('T',' ')}${s.fuseau ? ' ('+s.fuseau+')' : ''}`
+      + (s.surface.inclinaison_deg > 0
+          ? ` · surface ${s.surface.inclinaison_deg}° vers ${s.surface.orientation_cardinal}`
+            + (s.soleil_direct ? ' · soleil sur la face' : ' · soleil derrière la face')
+          : ' · surface horizontale');
+    const incline = s.surface.inclinaison_deg > 0;
+    $('mesures').innerHTML = (incline ? [
+      ['Sur la surface', val(s.mesures.irradiance_surface_w_m2,' W/m²')],
+      ['dont direct', val(s.mesures.surface_direct_w_m2,' W/m²')],
+      ['dont diffus', val(s.mesures.surface_diffus_w_m2,' W/m²')],
+      ['dont sol', val(s.mesures.surface_sol_w_m2,' W/m²')],
+      ['Incidence', val(s.geometrie.angle_incidence_deg,'°',0)],
+      ['Hauteur', val(s.geometrie.hauteur_deg,'°',1)],
+      ['Azimut', val(s.geometrie.azimut_deg,'°',0)],
+      ['Horizontal', val(s.mesures.ghi_w_m2,' W/m²')],
+    ] : [
+      ['GHI', val(s.mesures.ghi_w_m2,' W/m²')],
+      ['DNI', val(s.mesures.dni_w_m2,' W/m²')],
+      ['DHI', val(s.mesures.dhi_w_m2,' W/m²')],
+      ['Nuages', val(s.mesures.couverture_nuageuse_pct,' %')],
+      ['Hauteur', val(s.geometrie.hauteur_deg,'°',1)],
+      ['Azimut', val(s.geometrie.azimut_deg,'°',0)],
+      ['Ciel clair', val(s.geometrie.ghi_ciel_clair_w_m2,' W/m²')],
+      ['Clarté', s.geometrie.indice_ciel_clair == null ? '—' : s.geometrie.indice_ciel_clair.toFixed(2)],
+    ]).map(([k,v]) => `<div class="m"><dt>${k}</dt><dd>${v}</dd></div>`).join('');
+    $('json').textContent = JSON.stringify(s, null, 2);
+    $('sortieBloc').hidden = false; $('jsonBloc').hidden = false;
+  } catch (err) {
+    montrerErreur(err.message);
+  } finally {
+    $('go').disabled = false; $('go').textContent = 'Mesurer';
+  }
+});
+
+function montrerErreur(msg) {
+  $('err').textContent = msg;
+  $('errBloc').hidden = false;
+  $('sortieBloc').hidden = true; $('jsonBloc').hidden = true;
+}
+
+(function init() {
+  const d = new Date(Date.now() - new Date().getTimezoneOffset()*60000).toISOString();
+  $('date').value = d.slice(0,10);
+  $('heure').value = d.slice(11,16);
+})();
+</script>
+</body>
+</html>

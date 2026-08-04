@@ -1,0 +1,14 @@
+# En-têtes appliqués par Cloudflare Pages et Netlify.
+# GitHub Pages ne lit pas ce fichier : il l'ignore sans erreur.
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  X-Frame-Options: DENY
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+
+/src/*
+  Cache-Control: public, max-age=3600
+
+/api/*
+  Access-Control-Allow-Origin: *

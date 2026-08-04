@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SunProbe — sonde d'ensoleillement</title>
+<meta name="description" content="Estimer l'ensoleillement d'un point géographique à une date et une heure données, et en sortir un score exploitable en domotique.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="src/styles.css">
+</head>
+
+<body>
+<div class="page">
+
+  <header class="entete">
+    <h1 class="marque">Sun<b>Probe</b></h1>
+    <p class="baseline">Sonde d'ensoleillement · point · instant · score</p>
+  </header>
+
+  <main class="atelier">
+
+    <!-- ============================ Colonne de saisie -->
+    <section>
+      <div class="bloc">
+        <h2 class="bloc-titre">Point et instant</h2>
+
+        <form id="formulaire">
+          <div class="champ">
+            <label for="lieu-saisi">Adresse ou coordonnées</label>
+            <input id="lieu-saisi" type="text" autocomplete="off"
+                   placeholder="Rouen · ou 49.4431, 1.0993">
+          </div>
+
+          <div class="champ duo">
+            <div>
+              <label for="date">Date</label>
+              <input id="date" type="date">
+            </div>
+            <div>
+              <label for="heure">Heure locale</label>
+              <input id="heure" type="time">
+            </div>
+          </div>
+
+          <fieldset class="surface">
+            <legend>Surface visée</legend>
+            <div class="champ duo">
+              <div>
+                <label for="inclinaison">Inclinaison</label>
+                <input id="inclinaison" type="number" min="0" max="90" step="5" value="0">
+              </div>
+              <div>
+                <label for="orientation">Orientation</label>
+                <input id="orientation" type="number" min="0" max="360" step="5" value="180">
+              </div>
+            </div>
+            <p class="aide" id="aide-surface">
+              0° = horizontal, le sol ou un toit plat. 90° = vertical, un mur ou une fenêtre.
+            </p>
+          </fieldset>
+
+          <button class="mesurer" id="mesurer" type="submit">Mesurer</button>
+        </form>
+
+        <p class="aide">
+          L'heure est celle du fuseau du point mesuré, pas celle de votre navigateur.
+          Portée : 92 jours en arrière, 16 jours en avant.
+        </p>
+      </div>
+
+      <div class="bloc" id="bloc-carte">
+        <h2 class="bloc-titre">Ou cliquer sur la carte</h2>
+        <div id="carte"></div>
+      </div>
+    </section>
+
+    <!-- ============================ Colonne de relevé -->
+    <section>
+      <div class="message" id="message" data-ton="vide"></div>
+
+      <div id="resultat" class="masque">
+        <div class="bloc">
+          <div class="releve">
+            <div class="score" id="score">—<small>SCORE / 100</small></div>
+            <div>
+              <p class="etat" id="etat" data-etat="">—</p>
+              <p class="lieu" id="lieu"></p>
+            </div>
+            <div id="boussole"></div>
+          </div>
+          <dl class="mesures" id="mesures"></dl>
+        </div>
+
+        <div class="bloc">
+          <h2 class="bloc-titre" id="titre-courbe">Journée complète</h2>
+          <div id="graphique"></div>
+          <div class="legende">
+            <span class="l-flux" id="legende-flux">Flux prévu</span>
+            <span class="l-clair">Ciel clair théorique</span>
+            <span class="l-zenith">Hauteur du soleil</span>
+          </div>
+        </div>
+
+        <div class="bloc">
+          <h2 class="bloc-titre">Sortie domotique</h2>
+          <pre class="sortie" id="sortie"></pre>
+          <div class="actions">
+            <button class="lien" id="copier-json" type="button">Copier le JSON</button>
+            <button class="lien" id="permalien" type="button" data-url="">Copier le lien</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="pied">
+    Données : <a href="https://open-meteo.com" rel="noopener">Open-Meteo</a> (CC BY 4.0) ·
+    Fond de carte : OpenStreetMap · Position solaire calculée localement (NOAA).
+  </footer>
+
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="module" src="src/app.js"></script>
+</body>
+</html>
