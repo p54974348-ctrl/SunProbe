@@ -115,3 +115,20 @@ ok('pont IFTTT : déclenché et compte rendu dans la réponse', (() => {
 })());
 ok('ifttt_evenement sans ifttt_cle -> 400',
    (await appeler('?lat=49.4&lon=1.1&ifttt_evenement=soleil')).status === 400);
+
+/* --- Enveloppe Worker (flux « wrangler deploy » du tableau de bord) ----- */
+
+const { default: worker } = await import('../worker.js');
+const envWorker = { ASSETS: { fetch: async () => new Response('asset statique', { status: 200 }) } };
+const ctxWorker = { waitUntil: (p) => p };
+
+const viaWorker = await worker.fetch(
+  new Request(`https://sunprobe.example/api/v1/ensoleillement?lat=49.4431&lon=1.0997&at=${jour}T14:00`),
+  envWorker, ctxWorker,
+);
+ok('worker : la route API répond par la même fonction que Pages',
+   viaWorker.status === 200 && (await viaWorker.json()).version === 1);
+
+const viaAssets = await worker.fetch(new Request('https://sunprobe.example/index.html'), envWorker, ctxWorker);
+ok('worker : tout le reste est délégué aux fichiers statiques',
+   await viaAssets.text() === 'asset statique');

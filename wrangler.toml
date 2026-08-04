@@ -1,17 +1,21 @@
-# Déclare le dépôt comme projet Cloudflare **Pages** — pas un Worker.
+# Configuration Cloudflare — flux « Worker » du tableau de bord.
 #
-# Ce fichier évite deux pièges du tableau de bord Cloudflare, qui propose
-# « Worker » en premier :
-#   - un Worker ne sert pas le dossier functions/ : l'API /api/v1/ensoleillement
-#     n'existerait pas ;
-#   - un Worker publie le dépôt entier comme fichiers statiques, y compris le
-#     node_modules que l'outillage de Cloudflare vient d'installer -> erreur
-#     « Asset too large » (workerd pèse 122 Mio, la limite est 25 Mio).
+# worker.js sert la racine du dépôt en fichiers statiques et route
+# /api/v1/ensoleillement vers la même fonction que Cloudflare Pages
+# (functions/api/v1/ensoleillement.js) : une seule définition de l'API.
 #
-# En Pages, la racine est publiée telle quelle (aucune construction),
-# `wrangler pages deploy` ignore node_modules d'office, et functions/ est
-# automatiquement routé. Voir docs/HEBERGEMENT.md, option 2.
+# .assetsignore écarte node_modules des fichiers publiés : l'outillage de
+# Cloudflare y installe wrangler (workerd pèse 122 Mio, la limite d'un
+# asset est 25 Mio). Sans lui, le déploiement échoue sur « Asset too large ».
+#
+# Le dépôt reste aussi déployable en projet Cloudflare **Pages** classique
+# (racine publiée, functions/ routé automatiquement) : voir
+# docs/HEBERGEMENT.md, option 2.
 
 name = "sunprobe"
+main = "worker.js"
 compatibility_date = "2026-08-01"
-pages_build_output_dir = "."
+
+[assets]
+directory = "."
+binding = "ASSETS"

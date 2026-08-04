@@ -9,7 +9,7 @@ Réponds en français. Le code, les commentaires, les noms de variables et la do
 ## Commandes
 
 ```bash
-npm test        # suite complète, 181 vérifications, aucun accès réseau externe
+npm test        # suite complète, 183 vérifications, aucun accès réseau externe
 npm run serve   # page sur http://localhost:5173 (les modules ES exigent un serveur HTTP)
 npm start       # service JSON domotique sur http://localhost:8787
 ```
@@ -47,7 +47,7 @@ src/data  →  src/core  →  src/ui
 | `src/ui/` | toucher le DOM | `fetch`, calculer |
 | `src/sonde.js` | enchaîner data → core | toucher le DOM |
 
-**Pourquoi ça compte** : `core` et `sonde` ne dépendant d'aucun module Node, ils tournent à l'identique dans trois environnements — navigateur, Node, isolat Cloudflare Workers. Les trois points d'entrée (`index.html`, `server/sunprobe-api.mjs`, `functions/api/v1/ensoleillement.js`) ne diffèrent que par leur enveloppe. Importer `node:http` dans `core` casserait la fonction Cloudflare sans que rien ne le signale localement.
+**Pourquoi ça compte** : `core` et `sonde` ne dépendant d'aucun module Node, ils tournent à l'identique dans trois environnements — navigateur, Node, isolat Cloudflare Workers. Les trois points d'entrée (`index.html`, `server/sunprobe-api.mjs`, `functions/api/v1/ensoleillement.js`) ne diffèrent que par leur enveloppe ; `worker.js` à la racine est une enveloppe de plus (flux « Worker » de Cloudflare), qui réutilise la fonction Pages telle quelle. Importer `node:http` dans `core` casserait la fonction Cloudflare sans que rien ne le signale localement.
 
 Ces règles ne sont pas seulement écrites, elles sont **exécutées** : `tests/architecture.test.mjs` les vérifie et fait échouer `npm test` en cas d'infraction. Il attrape aussi un seuil codé en dur dans `score.js`. Ne pas le contourner — le corriger, ou en discuter avant de modifier la règle.
 
@@ -120,7 +120,7 @@ Accessibilité : chaque SVG porte un `aria-label` décrivant le résultat en cla
 
 ### Vérifié
 
-181 tests hors ligne : position solaire recalée sur des repères astronomiques indépendants (solstices, midi solaire, hémisphère sud, soleil de minuit), physique du plan orienté, ensoleillement journalier (murs orientés, nuit polaire, soleil de minuit), seuils, sélection horaire, tracés SVG sans débordement, concordance prototype/modules, et les deux implémentations d'API.
+183 tests hors ligne : position solaire recalée sur des repères astronomiques indépendants (solstices, midi solaire, hémisphère sud, soleil de minuit), physique du plan orienté, ensoleillement journalier (murs orientés, nuit polaire, soleil de minuit), seuils, sélection horaire, tracés SVG sans débordement, concordance prototype/modules, et les deux implémentations d'API.
 
 ### Non vérifié
 
