@@ -108,26 +108,8 @@ Chaque maillon a une version sans le moindre coût ni carte bancaire :
 | Mesurer toutes les heures | Déclencheur horaire Apps Script (`sondeProgrammee`) |
 | Notification mobile | Propriété `NTFY_SUJET` — [ntfy.sh](https://ntfy.sh), gratuit et sans compte : installer l'appli ntfy et s'abonner au même sujet |
 | Piloter un objet connecté | Pont IFTTT (2 applets gratuites) ou Home Assistant local |
-| Question en langage naturel | Dialogflow ES, gratuit en texte (ci-dessous) |
 
 La notification ntfy ne part qu'**au changement d'état** (`plein soleil` → `ombre`…) : mémoire par sonde dans `ETAT_PRECEDENT[_nom]`, pas d'alerte horaire répétitive — et pas besoin du tri payant d'IFTTT Pro. Le sujet ntfy est public par nature : en choisir un long et impossible à deviner (ex. `sonde-facade-x7k2m9`), sans y mettre de secret.
-
-### Agent Dialogflow ES : demander l'ensoleillement en langage naturel
-
-La même URL `…/exec` sert de **webhook de fulfillment** : l'agent comprend la question, la sonde mesure et répond une phrase (« Sur le mur orienté NNO (333°) : soleil faible, score 38 sur 100… »).
-
-1. Prérequis : les propriétés du script `LAT`, `LON`, `ORIENTATION` sont renseignées (voir plus haut) — l'agent parle de *votre* façade.
-2. [dialogflow.cloud.google.com](https://dialogflow.cloud.google.com) → **Create Agent** — nom libre, langue **français**.
-3. **Fulfillment** (menu de gauche) → **Webhook** : *Enabled*, *URL* = votre `…/exec`, rien d'autre → **Save**.
-4. **Intents** → **Create Intent**, nom `Ensoleillement` :
-   - *Training phrases* : « quel est l'ensoleillement de la façade ? », « y a-t-il du soleil sur le mur ? », « la façade est-elle au soleil ? », « c'est ensoleillé ? »…
-   - Tout en bas, *Fulfillment* → **Enable webhook call for this intent** → **Save**.
-5. Tester dans le panneau de droite (« Try it now ») : taper une des phrases, la réponse de la sonde apparaît.
-6. Facultatif — viser une autre orientation à la voix : dans l'intention, ajouter un paramètre `orientation` (entité `@sys.number`, non requis) et des phrases du type « quel est l'ensoleillement du mur à 180 degrés ? ». Le paramètre prime alors sur la propriété `ORIENTATION`.
-
-Pour l'exposer : l'onglet **Integrations** propose notamment **Dialogflow Messenger**, un widget de discussion à coller dans n'importe quelle page web. À savoir : depuis 2023, Google a fermé le pont Dialogflow → Google Assistant — un agent ES ne se pilote plus à la voix depuis un Google Home ; pour déclencher la domotique, le chemin reste le pont IFTTT ci-dessus.
-
-Le webhook doit répondre en moins de 5 secondes : la mesure directe en prend bien moins, même sans cache.
 
 ## Option 3 — Netlify, Vercel, autres
 

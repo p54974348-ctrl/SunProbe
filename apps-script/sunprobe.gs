@@ -25,14 +25,6 @@
  *   horaire, toutes les heures. La sonde mesure et pousse vers IFTTT sans
  *   qu'aucun service n'ait à l'appeler.
  *
- * ── Agent Dialogflow ES ───────────────────────────────────────────────────
- *   La même URL /exec sert de webhook de « fulfillment » : Dialogflow ES
- *   appelle doPost, la sonde mesure (point et surface lus dans les
- *   propriétés du script, orientation surchargée par le paramètre
- *   `orientation` de l'intention s'il existe) et répond une phrase en
- *   français dans `fulfillmentText`. Mise en place : voir
- *   docs/HEBERGEMENT.md, option 2 bis.
- *
  * ── Pourquoi ce fichier duplique le noyau ─────────────────────────────────
  *   Apps Script n'accepte pas les modules ES. Comme le prototype, ce
  *   fichier recopie donc les fonctions de calcul, et le test
@@ -347,10 +339,8 @@ function doGet(e) {
   }
 }
 
-/* ------------------------------------------------- agent Dialogflow ES
-   Dialogflow ES appelle le webhook en POST et attend une réponse
-   { fulfillmentText } en moins de 5 secondes — le cache de doGet ne sert
-   pas ici, la mesure directe reste bien en dessous. */
+/* -------------------------------------------------------------- phrase
+   La sortie dite en une phrase — le corps des notifications ntfy. */
 
 /** La sortie de la sonde, dite en une phrase. */
 function phraseSortie(s) {
@@ -369,40 +359,6 @@ function phraseSortie(s) {
       + ' % du jour (' + e.duree_soleil_h + ' h sur ' + e.duree_jour_h + ' h de jour).';
   }
   return phrase;
-}
-
-function doPost(e) {
-  const json = (corps) => ContentService
-    .createTextOutput(JSON.stringify(corps))
-    .setMimeType(ContentService.MimeType.JSON);
-
-  let requete = {};
-  try { requete = JSON.parse((e && e.postData && e.postData.contents) || '{}'); } catch (err) { /* corps illisible : on retombe sur les propriétés */ }
-  const parametres = (requete.queryResult && requete.queryResult.parameters) || {};
-  const prop = PropertiesService.getScriptProperties();
-
-  // L'intention peut porter un paramètre `orientation` (@sys.number) ;
-  // à défaut, le point et la surface viennent des propriétés du script.
-  const orientation = parametres.orientation !== undefined && String(parametres.orientation).trim() !== ''
-    ? String(parametres.orientation)
-    : (prop.getProperty('ORIENTATION') ?? undefined);
-
-  const lecture = lireParametres({
-    lat: prop.getProperty('LAT'),
-    lon: prop.getProperty('LON'),
-    orientation,
-    inclinaison: prop.getProperty('INCLINAISON') ?? (orientation !== undefined ? '90' : undefined),
-  });
-  if (lecture.erreur) {
-    return json({ fulfillmentText: 'La sonde n’est pas configurée : ' + lecture.erreur
-      + ' Renseigner LAT et LON dans les propriétés du script.' });
-  }
-
-  try {
-    return json({ fulfillmentText: phraseSortie(mesurer(lecture.valeurs)) });
-  } catch (err) {
-    return json({ fulfillmentText: 'La mesure a échoué : ' + String(err && err.message || err) });
-  }
 }
 
 /**

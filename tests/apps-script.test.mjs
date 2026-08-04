@@ -57,7 +57,7 @@ let gs;
 ok('apps-script : syntaxe JavaScript valide et executable', (() => {
   try {
     const executer = new Function('UrlFetchApp', 'ContentService', 'CacheService', 'PropertiesService',
-      `${source}\n; return { positionSolaire, ghiCielClair, irradianceSurPlan, ensoleillementJournalier, doGet, doPost, sondeProgrammee };`);
+      `${source}\n; return { positionSolaire, ghiCielClair, irradianceSurPlan, ensoleillementJournalier, doGet, sondeProgrammee };`);
     gs = executer(UrlFetchApp, ContentService, CacheService, PropertiesService);
     return typeof gs.doGet === 'function';
   } catch (e) { console.log('   ', e.message); return false; }
@@ -145,30 +145,6 @@ ok('sondeProgrammee : mur vertical implicite et Webhook declenche',
    programmee.surface.inclinaison_deg === 90 && programmee.surface.orientation_deg === 333
    && urlIFTTTRecue !== null && urlIFTTTRecue.includes('/trigger/soleil_facade/with/key/CLE2'),
    `-> ${programmee.etat} / ${programmee.score}`);
-
-/* --- Agent Dialogflow ES ------------------------------------------------ */
-
-const dialogflow = (corps) => JSON.parse(gs.doPost({
-  postData: { contents: JSON.stringify(corps) },
-}).texte);
-
-const repDefaut = dialogflow({ queryResult: { parameters: {} } });
-ok('doPost : phrase de fulfillment sur la surface des proprietes (333 -> NNO)',
-   typeof repDefaut.fulfillmentText === 'string'
-   && repDefaut.fulfillmentText.includes('NNO')
-   && /score \d+ sur 100/.test(repDefaut.fulfillmentText),
-   `-> « ${repDefaut.fulfillmentText.slice(0, 60)}… »`);
-
-const repSud = dialogflow({ queryResult: { parameters: { orientation: 180 } } });
-ok('doPost : le parametre orientation de l\'intention prime (180 -> S)',
-   repSud.fulfillmentText.includes('orienté S ') || repSud.fulfillmentText.includes('orienté S('),
-   `-> « ${repSud.fulfillmentText.slice(0, 60)}… »`);
-
-const latSauve = proprietes.LAT;
-delete proprietes.LAT;
-ok('doPost : sonde non configuree -> phrase d\'erreur explicite',
-   dialogflow({}).fulfillmentText.includes('LAT'));
-proprietes.LAT = latSauve;
 
 /* --- Notification ntfy, au changement d'etat seulement ------------------ */
 
