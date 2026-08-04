@@ -396,9 +396,20 @@ function doPost(e) {
 
 /**
  * Sonde programmée : à brancher sur un déclencheur horaire Apps Script.
- * Lit le point, la surface et le Webhook dans les propriétés du script
- * (LAT, LON, ORIENTATION, INCLINAISON, IFTTT_EVENEMENT, IFTTT_CLE) :
- * rien à appeler de l'extérieur, la clé IFTTT ne circule dans aucune URL.
+ * Lit le point et la surface dans les propriétés du script (LAT, LON,
+ * ORIENTATION, INCLINAISON) : rien à appeler de l'extérieur.
+ *
+ * Trois canaux de restitution, tous facultatifs, tous gratuits :
+ *   - IFTTT_EVENEMENT + IFTTT_CLE : déclenche le Webhook à CHAQUE mesure —
+ *     c'est le rythme du déclencheur qui cadence l'automatisme ;
+ *   - EMAIL : un courriel (MailApp, rien à installer) ;
+ *   - NTFY_SUJET : une notification mobile via ntfy.sh — service gratuit,
+ *     sans compte : installer l'appli ntfy et s'abonner au même sujet.
+ *     Le sujet fait office de secret : en choisir un impossible à deviner.
+ *
+ * Courriel et ntfy ne partent qu'AU CHANGEMENT D'ÉTAT (plein soleil,
+ * soleil faible, ombre, nuit) : la sonde ne crie pas toutes les heures
+ * que rien n'a bougé. Mémoire dans la propriété ETAT_PRECEDENT.
  */
 function sondeProgrammee() {
   const prop = PropertiesService.getScriptProperties();
@@ -412,8 +423,29 @@ function sondeProgrammee() {
   if (lecture.erreur) throw new Error(lecture.erreur);
 
   const sortie = mesurer(lecture.valeurs);
+
   const evenement = prop.getProperty('IFTTT_EVENEMENT');
   const cle = prop.getProperty('IFTTT_CLE');
   if (evenement && cle) declencherIFTTT(evenement, cle, sortie);
+
+  const precedent = prop.getProperty('ETAT_PRECEDENT');
+  prop.setProperty('ETAT_PRECEDENT', sortie.etat);
+  if (sortie.etat !== precedent) {
+    const courriel = prop.getProperty('EMAIL');
+    if (courriel) {
+      MailApp.sendEmail(courriel,
+        'SunProbe : ' + sortie.etat + ' (score ' + sortie.score + ')',
+        phraseSortie(sortie));
+    }
+    const sujet = prop.getProperty('NTFY_SUJET');
+    if (sujet) {
+      UrlFetchApp.fetch('https://ntfy.sh/' + encodeURIComponent(sujet), {
+        method: 'post',
+        payload: phraseSortie(sortie),
+        headers: { Title: 'SunProbe : ' + sortie.etat },
+      });
+    }
+  }
+
   return sortie;
 }

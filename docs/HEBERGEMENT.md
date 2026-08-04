@@ -96,6 +96,22 @@ Quand Cloudflare résiste, Google Apps Script est le chemin de repli le plus cou
 - **Sonde programmée, sans applet « aller »** : renseigner les propriétés du script (`LAT`, `LON`, `ORIENTATION`, `INCLINAISON`, `IFTTT_EVENEMENT`, `IFTTT_CLE`) puis ajouter un déclencheur horaire sur `sondeProgrammee`. La mesure part vers IFTTT toutes les heures et la clé ne circule dans aucune URL.
 - Ce fichier duplique le noyau (Apps Script n'accepte pas les modules ES) : `tests/apps-script.test.mjs` garantit qu'il ne diverge pas des modules, comme pour le prototype.
 
+### La chaîne 100 % gratuite
+
+Chaque maillon a une version sans le moindre coût ni carte bancaire :
+
+| Besoin | Brique gratuite |
+|---|---|
+| La page web | GitHub Pages |
+| L'API JSON publique | Apps Script (`doGet`) |
+| Mesurer toutes les heures | Déclencheur horaire Apps Script (`sondeProgrammee`) |
+| Être prévenu par e-mail | Propriété `EMAIL` — `MailApp`, rien à installer |
+| Notification mobile | Propriété `NTFY_SUJET` — [ntfy.sh](https://ntfy.sh), gratuit et sans compte : installer l'appli ntfy et s'abonner au même sujet |
+| Piloter un objet connecté | Pont IFTTT (2 applets gratuites) ou Home Assistant local |
+| Question en langage naturel | Dialogflow ES, gratuit en texte (ci-dessous) |
+
+Le courriel et la notification ntfy ne partent qu'**au changement d'état** (`plein soleil` → `ombre`…) : mémoire dans la propriété `ETAT_PRECEDENT`, pas d'alerte horaire répétitive — et pas besoin du tri payant d'IFTTT Pro. Le sujet ntfy est public par nature : en choisir un long et impossible à deviner (ex. `sonde-facade-x7k2m9`), sans y mettre de secret.
+
 ### Agent Dialogflow ES : demander l'ensoleillement en langage naturel
 
 La même URL `…/exec` sert de **webhook de fulfillment** : l'agent comprend la question, la sonde mesure et répond une phrase (« Sur le mur orienté NNO (333°) : soleil faible, score 38 sur 100… »).

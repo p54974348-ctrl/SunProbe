@@ -30,8 +30,10 @@ const previsions = {
 
 let appelsSource = 0;
 let urlIFTTTRecue = null;
-const UrlFetchApp = { fetch(url) {
+let notificationNtfy = null;
+const UrlFetchApp = { fetch(url, options) {
   if (String(url).includes('maker.ifttt.com')) { urlIFTTTRecue = String(url); return { getContentText: () => 'Congratulations!' }; }
+  if (String(url).includes('ntfy.sh')) { notificationNtfy = { url: String(url), options }; return { getContentText: () => 'ok' }; }
   appelsSource++;
   return { getContentText: () => JSON.stringify(previsions) };
 } };
@@ -45,14 +47,19 @@ const CacheService = { getScriptCache: () => ({
   put: (cle, valeur) => { magasin.set(cle, valeur); },
 }) };
 const proprietes = {};
-const PropertiesService = { getScriptProperties: () => ({ getProperty: (cle) => proprietes[cle] ?? null }) };
+const PropertiesService = { getScriptProperties: () => ({
+  getProperty: (cle) => proprietes[cle] ?? null,
+  setProperty: (cle, valeur) => { proprietes[cle] = String(valeur); },
+}) };
+const courriels = [];
+const MailApp = { sendEmail: (a, sujet, corps) => courriels.push({ a, sujet, corps }) };
 
 let gs;
 ok('apps-script : syntaxe JavaScript valide et executable', (() => {
   try {
-    const executer = new Function('UrlFetchApp', 'ContentService', 'CacheService', 'PropertiesService',
+    const executer = new Function('UrlFetchApp', 'ContentService', 'CacheService', 'PropertiesService', 'MailApp',
       `${source}\n; return { positionSolaire, ghiCielClair, irradianceSurPlan, ensoleillementJournalier, doGet, doPost, sondeProgrammee };`);
-    gs = executer(UrlFetchApp, ContentService, CacheService, PropertiesService);
+    gs = executer(UrlFetchApp, ContentService, CacheService, PropertiesService, MailApp);
     return typeof gs.doGet === 'function';
   } catch (e) { console.log('   ', e.message); return false; }
 })());
@@ -163,3 +170,22 @@ delete proprietes.LAT;
 ok('doPost : sonde non configuree -> phrase d\'erreur explicite',
    dialogflow({}).fulfillmentText.includes('LAT'));
 proprietes.LAT = latSauve;
+
+/* --- Notifications gratuites : e-mail et ntfy, au changement d'etat ----- */
+
+Object.assign(proprietes, { EMAIL: 'moi@exemple.fr', NTFY_SUJET: 'sonde-essai-7c2f' });
+delete proprietes.ETAT_PRECEDENT;
+notificationNtfy = null;
+
+const premiere = gs.sondeProgrammee();
+ok('changement d\'etat -> courriel et ntfy partent',
+   courriels.length === 1 && courriels[0].sujet.includes(premiere.etat)
+   && notificationNtfy !== null && notificationNtfy.url.endsWith('/sonde-essai-7c2f')
+   && notificationNtfy.options.method === 'post',
+   `-> « ${courriels[0]?.sujet} »`);
+
+notificationNtfy = null;
+urlIFTTTRecue = null;
+gs.sondeProgrammee();
+ok('etat inchange -> aucune nouvelle notification, mais IFTTT part toujours',
+   courriels.length === 1 && notificationNtfy === null && urlIFTTTRecue !== null);

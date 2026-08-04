@@ -105,7 +105,7 @@ Le dépôt doit être poussé sur GitHub — c'est le prérequis des sessions cl
 npm test
 ```
 
-198 vérifications, sans aucun accès réseau externe :
+200 vérifications, sans aucun accès réseau externe :
 
 - étanchéité des couches : le garde-fou `tests/architecture.test.mjs` fait échouer la suite si le noyau touche au réseau ou au DOM, ou si un seuil est codé en dur hors de `config.js` ;
 - position solaire recalée sur des repères astronomiques indépendants — hauteur aux deux solstices, heure du midi solaire, azimut plein sud dans l'hémisphère nord et plein nord à Sydney, soleil de minuit à Tromsø ;
