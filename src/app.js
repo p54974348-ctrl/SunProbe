@@ -8,7 +8,7 @@ import { CONFIG } from './config.js';
 import { cardinal } from './core/solar-position.js';
 import { resoudrePoint } from './data/geocodage.js';
 import { ErreurReseau } from './data/http.js';
-import { declencherIFTTT } from './data/webhook-ifttt.js';
+import { sortieAvecPontIFTTT } from './data/webhook-ifttt.js';
 import { sonder } from './sonde.js';
 import { initialiserCarte, placerMarqueur } from './ui/carte.js';
 import {
@@ -69,10 +69,13 @@ function lireFormulaire() {
   };
 }
 
-/** Mode de réponse : « html » (la page) par défaut, « json » (sortie brute). */
-function lireFormat() {
-  return $('#format').value === 'json' ? 'json' : 'html';
-}
+/**
+ * Mode de réponse : « html » (la page) par défaut, « json » (sortie brute).
+ * Piloté par le seul paramètre d'URL format — il n'a pas de place dans le
+ * formulaire : qui veut du JSON veut une URL, pas un écran.
+ */
+let formatReponse = 'html';
+const lireFormat = () => formatReponse;
 
 /**
  * Le lien HTML rejoue l'instant mesuré : il embarque date et heure.
@@ -137,27 +140,11 @@ async function lancer(demande) {
     derniereSortie = resultat.sortie;
 
     // Mode JSON : la sortie brute remplace la page, rien d'autre à dessiner.
+    // Le pont IFTTT — même fonction que dans les deux API — part avant l'affichage.
     if (lireFormat() === 'json') {
-      const s = resultat.sortie;
-
-      // Pont IFTTT : les trois champs pilotes partent en value1/2/3.
-      // La réponse est opaque (no-cors) : « envoyée » ne veut pas dire « acceptée ».
-      let webhook = null;
-      if (webhookIFTTT) {
-        try {
-          await declencherIFTTT(webhookIFTTT.evenement, webhookIFTTT.cle, {
-            value1: s.score,
-            value2: s.etat,
-            value3: String(s.soleil_direct),
-          });
-          webhook = { evenement: webhookIFTTT.evenement, demande_envoyee: true };
-        } catch {
-          webhook = { evenement: webhookIFTTT.evenement, demande_envoyee: false };
-        }
-      }
-
-      history.replaceState(null, '', construirePermalien(s));
-      afficherJsonBrut(webhook ? { ...s, webhook_ifttt: webhook } : s);
+      const s = await sortieAvecPontIFTTT(resultat.sortie, webhookIFTTT);
+      history.replaceState(null, '', construirePermalien(resultat.sortie));
+      afficherJsonBrut(s);
       return;
     }
 
@@ -198,7 +185,7 @@ function initialiser() {
   $('#heure').value = params.get('heure') || now.heure;
   if (params.has('inclinaison')) $('#inclinaison').value = params.get('inclinaison');
   if (params.has('orientation')) $('#orientation').value = params.get('orientation');
-  if (params.get('format') === 'json') $('#format').value = 'json';
+  if (params.get('format') === 'json') formatReponse = 'json';
   if (params.get('ifttt_evenement') && params.get('ifttt_cle')) {
     webhookIFTTT = { evenement: params.get('ifttt_evenement'), cle: params.get('ifttt_cle') };
   }

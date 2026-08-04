@@ -21,6 +21,7 @@ import { createServer } from 'node:http';
 import { lireParametres } from '../src/core/requete.js';
 import { sonder } from '../src/sonde.js';
 import { ErreurReseau } from '../src/data/http.js';
+import { sortieAvecPontIFTTT } from '../src/data/webhook-ifttt.js';
 
 const PORT = Number(process.env.PORT) || 8787;
 const HOTE = process.env.HOST || '0.0.0.0';
@@ -75,6 +76,8 @@ const serveur = createServer(async (req, res) => {
         inclinaison: 'facultatif, 0-90. 0 = horizontal, 90 = mur',
         orientation: 'facultatif, 0-360 depuis le nord. 180 = sud',
         albedo: 'facultatif, 0-1. Défaut 0.2',
+        ifttt_evenement: 'facultatif, avec ifttt_cle : déclenche ce Webhook IFTTT après la mesure',
+        ifttt_cle: 'facultatif, clé Webhooks du compte IFTTT — un secret, ne pas publier',
       },
     });
   }
@@ -83,7 +86,10 @@ const serveur = createServer(async (req, res) => {
   if (!lecture.ok) return repondre(res, lecture.statut, lecture.erreur);
 
   try {
-    repondre(res, 200, await sonderAvecCache(lecture.valeurs));
+    // Le pont IFTTT se déclenche à chaque requête, réponse en cache ou pas :
+    // c'est le rythme d'interrogation d'IFTTT qui cadence les événements.
+    const sortie = await sonderAvecCache(lecture.valeurs);
+    repondre(res, 200, await sortieAvecPontIFTTT(sortie, lecture.valeurs.ifttt));
   } catch (err) {
     if (err instanceof ErreurReseau) {
       const code = err.cause === 'timeout' ? 504 : err.statut && err.statut < 500 ? 400 : 502;

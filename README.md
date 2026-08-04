@@ -58,12 +58,13 @@ curl 'http://localhost:8787/api/v1/ensoleillement?lat=49.4431&lon=1.0993&inclina
 | `orientation` | `180` | Azimut depuis le nord : 90 = E, 180 = S, 270 = O. |
 | `albedo` | `0.2` | Réflectivité du sol. 0.6 = neige fraîche. |
 | `at` | maintenant | `AAAA-MM-JJTHH:MM`, heure locale du point. |
+| `ifttt_evenement`, `ifttt_cle` | — | Ensemble : déclenchent ce Webhook IFTTT après la mesure (voir plus bas). |
 
 Voir [docs/DOMOTIQUE.md](docs/DOMOTIQUE.md) pour Home Assistant, Jeedom et Node-RED.
 
 ## Mode JSON de la page
 
-La page sait aussi répondre en JSON : choisissez « JSON brut » dans le champ **Réponse** du formulaire, ou ajoutez `format=json` à un lien partageable :
+La page sait aussi répondre en JSON : ajoutez `format=json` à un lien partageable :
 
 ```
 https://p54974348-ctrl.github.io/SunProbe/?lat=49.4431&lon=1.0993&orientation=180&format=json
@@ -73,17 +74,19 @@ La page ne rend alors que la sortie domotique, telle quelle. Sans le paramètre 
 
 **Le lien JSON est une sonde vivante** : il fige le lieu et la surface, jamais l'instant. À chaque chargement, la mesure est refaite à l'heure courante du point — c'est le lien à mettre en favori pour surveiller une façade. Pour figer un instant précis, ajoutez `date=AAAA-MM-JJ&heure=HH:MM` à l'URL.
 
-### Déclencher un Webhook IFTTT
+### IFTTT
 
-En mode JSON, deux paramètres arment le pont vers IFTTT :
+L'action « Webhooks — Make a web request » d'IFTTT n'exécute pas de JavaScript et **ne lit pas la réponse** de la requête qu'elle envoie. Le pont tient compte des deux contraintes : IFTTT appelle **l'API** (pas la page statique), et c'est **la sonde qui renvoie le résultat à IFTTT** en déclenchant un événement.
 
 ```
-…&format=json&ifttt_evenement=soleil_facade&ifttt_cle=VOTRE_CLE
+https://<votre-api>/api/v1/ensoleillement?lat=49.4431&lon=1.0993&orientation=329&ifttt_evenement=soleil_facade&ifttt_cle=VOTRE_CLE
 ```
 
-À chaque chargement, une fois la mesure faite, la page déclenche l'événement `soleil_facade` de vos Webhooks IFTTT avec `value1` = score, `value2` = état, `value3` = soleil direct. Côté IFTTT : applet « Webhooks — Receive a web request », puis l'action de votre choix (volet, notification…). Le champ `webhook_ifttt` de la sortie affichée confirme l'envoi.
+Deux applets suffisent : la première appelle cette URL (sur un horaire, un bouton, un lever de soleil…) ; la seconde — « Webhooks : Receive a web request », événement `soleil_facade` — reçoit `value1` = score, `value2` = état, `value3` = soleil direct, et agit (volet, notification…). L'API est le service Node à la maison ou la fonction Cloudflare ; sur Cloudflare, le cache de périphérie (5 min) espace les déclenchements.
 
-Deux limites à connaître. La clé IFTTT est un **secret** : ne publiez pas une URL qui la porte. Et le sens inverse — IFTTT appelant la page — ne peut pas fonctionner : l'action « web request » d'IFTTT n'exécute pas de JavaScript et ignore le corps des réponses ; pour interroger la sonde depuis un serveur, utilisez le service Node ou la fonction Cloudflare.
+La page porte le même pont : un lien JSON chargé dans un navigateur avec `ifttt_evenement`/`ifttt_cle` déclenche l'événement après la mesure — utile pour une tablette murale ou un favori.
+
+La clé IFTTT est un **secret** : ne publiez aucune URL qui la porte. Le champ `webhook_ifttt` de la réponse confirme l'envoi.
 
 C'est un **affichage** : le document reste une page statique dont le JSON est produit par le navigateur. Un automatisme qui n'exécute pas de JavaScript doit interroger le service (`npm start`) ou la fonction Cloudflare, qui répondent en `application/json`.
 
@@ -99,7 +102,7 @@ Le dépôt doit être poussé sur GitHub — c'est le prérequis des sessions cl
 npm test
 ```
 
-175 vérifications, sans aucun accès réseau externe :
+181 vérifications, sans aucun accès réseau externe :
 
 - étanchéité des couches : le garde-fou `tests/architecture.test.mjs` fait échouer la suite si le noyau touche au réseau ou au DOM, ou si un seuil est codé en dur hors de `config.js` ;
 - position solaire recalée sur des repères astronomiques indépendants — hauteur aux deux solstices, heure du midi solaire, azimut plein sud dans l'hémisphère nord et plein nord à Sydney, soleil de minuit à Tromsø ;

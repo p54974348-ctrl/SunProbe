@@ -76,8 +76,26 @@ export function lireParametres(params) {
     }
   }
 
+  // --- Pont IFTTT, facultatif. Les deux paramètres vont ensemble. ---
+
+  const iftttEvenement = params.get('ifttt_evenement');
+  const iftttCle = params.get('ifttt_cle');
+  if ((iftttEvenement === null) !== (iftttCle === null)) {
+    return refus(
+      'Les paramètres ifttt_evenement et ifttt_cle vont ensemble : ' +
+        'l’un sans l’autre ne déclenche rien.',
+    );
+  }
+  let ifttt = null;
+  if (iftttEvenement !== null) {
+    if (iftttEvenement.trim() === '' || iftttCle.trim() === '') {
+      return refus('Paramètres ifttt_evenement et ifttt_cle : non vides quand ils sont fournis.');
+    }
+    ifttt = { evenement: iftttEvenement.trim(), cle: iftttCle.trim() };
+  }
+
   return {
     ok: true,
-    valeurs: { latitude, longitude, at, surface: { inclinaisonDeg, orientationDeg, albedo } },
+    valeurs: { latitude, longitude, at, surface: { inclinaisonDeg, orientationDeg, albedo }, ifttt },
   };
 }

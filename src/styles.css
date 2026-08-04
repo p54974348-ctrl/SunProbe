@@ -133,8 +133,7 @@ body::before {
   margin-bottom: 6px;
 }
 
-.champ input,
-.champ select {
+.champ input {
   width: 100%;
   background: var(--nuit);
   border: 1px solid var(--trait);
@@ -146,7 +145,6 @@ body::before {
 }
 
 .champ input:focus-visible,
-.champ select:focus-visible,
 button:focus-visible,
 .lien:focus-visible {
   outline: 2px solid var(--zenith);
