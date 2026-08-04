@@ -1,0 +1,401 @@
+/* ==========================================================================
+   SunProbe — habillage
+   Registre visuel : instrument de mesure. Deux accents, deux sens :
+     --flux   (ambre) = ce qui est mesuré, le rayonnement
+     --zenith (cyan)  = ce qui est calculé, la géométrie solaire
+   Aucune couleur ne sert de décor : chacune porte une catégorie d'information.
+   ========================================================================== */
+
+:root {
+  --nuit: #0e1220;
+  --ardoise: #171e31;
+  --ardoise-clair: #202942;
+  --trait: #2b3552;
+  --brume: #8894b0;
+  --givre: #e9edf6;
+  --flux: #ffb03a;
+  --flux-sourd: #7a5518;
+  --zenith: #6fd3e0;
+  --alerte: #ff7a7a;
+
+  --display: 'Archivo', system-ui, sans-serif;
+  --data: 'IBM Plex Mono', ui-monospace, monospace;
+
+  --r: 4px;
+  --gap: 20px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--nuit);
+  color: var(--givre);
+  font-family: var(--display);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Bandeau de repérage : la grille de l'instrument, à peine visible. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--trait) 1px, transparent 1px),
+    linear-gradient(90deg, var(--trait) 1px, transparent 1px);
+  background-size: 64px 64px;
+  opacity: 0.14;
+  z-index: 0;
+}
+
+.page {
+  position: relative;
+  z-index: 1;
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px 22px 64px;
+}
+
+/* --- En-tête ------------------------------------------------------------ */
+
+.entete {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--trait);
+  margin-bottom: var(--gap);
+}
+
+.marque {
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+.marque b { color: var(--flux); font-weight: 800; }
+
+.baseline {
+  font-family: var(--data);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brume);
+}
+
+/* --- Grille principale -------------------------------------------------- */
+
+.atelier {
+  display: grid;
+  grid-template-columns: 340px minmax(0, 1fr);
+  gap: var(--gap);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .atelier { grid-template-columns: 1fr; }
+}
+
+.bloc {
+  background: var(--ardoise);
+  border: 1px solid var(--trait);
+  border-radius: var(--r);
+  padding: 18px;
+}
+
+.bloc + .bloc { margin-top: var(--gap); }
+
+.bloc-titre {
+  font-family: var(--data);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--brume);
+  margin: 0 0 14px;
+}
+
+/* --- Formulaire --------------------------------------------------------- */
+
+.champ { margin-bottom: 14px; }
+
+.champ > label {
+  display: block;
+  font-family: var(--data);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brume);
+  margin-bottom: 6px;
+}
+
+.champ input {
+  width: 100%;
+  background: var(--nuit);
+  border: 1px solid var(--trait);
+  border-radius: var(--r);
+  color: var(--givre);
+  font-family: var(--data);
+  font-size: 14px;
+  padding: 10px 11px;
+}
+
+.champ input:focus-visible,
+button:focus-visible,
+.lien:focus-visible {
+  outline: 2px solid var(--zenith);
+  outline-offset: 2px;
+}
+
+.duo { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+.mesurer {
+  width: 100%;
+  background: var(--flux);
+  color: #1a1204;
+  border: 0;
+  border-radius: var(--r);
+  font-family: var(--data);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 12px;
+  cursor: pointer;
+  transition: filter 0.15s ease;
+}
+.mesurer:hover { filter: brightness(1.12); }
+.mesurer[disabled] { opacity: 0.5; cursor: progress; }
+
+.aide {
+  font-family: var(--data);
+  font-size: 11px;
+  color: var(--brume);
+  margin: 10px 0 0;
+  line-height: 1.55;
+}
+
+/* --- Carte -------------------------------------------------------------- */
+
+#carte {
+  height: 260px;
+  border-radius: var(--r);
+  border: 1px solid var(--trait);
+  background: var(--nuit);
+}
+.leaflet-container { background: var(--nuit); }
+
+/* --- Relevé (le héros) --------------------------------------------------- */
+
+.releve {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 26px;
+  align-items: center;
+}
+
+@media (max-width: 560px) {
+  .releve { grid-template-columns: 1fr; gap: 14px; }
+}
+
+.score {
+  font-family: var(--data);
+  font-size: clamp(64px, 13vw, 104px);
+  font-weight: 600;
+  line-height: 0.86;
+  font-variant-numeric: tabular-nums;
+  color: var(--flux);
+  letter-spacing: -0.04em;
+}
+.score small {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  color: var(--brume);
+  margin-top: 10px;
+}
+
+.etat {
+  font-size: clamp(24px, 4vw, 34px);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  margin: 0 0 4px;
+}
+.etat[data-etat='plein soleil']  { color: var(--flux); }
+.etat[data-etat='soleil faible'] { color: #d8b26a; }
+.etat[data-etat='ombre']         { color: var(--brume); }
+.etat[data-etat='nuit']          { color: #5d6a8c; }
+
+.lieu {
+  font-family: var(--data);
+  font-size: 12px;
+  color: var(--brume);
+  margin: 0;
+}
+
+/* --- Bandeau de mesures -------------------------------------------------- */
+
+.mesures {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 1px;
+  background: var(--trait);
+  border: 1px solid var(--trait);
+  border-radius: var(--r);
+  overflow: hidden;
+  margin-top: 18px;
+}
+
+.mesure { background: var(--ardoise); padding: 12px 13px; }
+
+.mesure dt {
+  font-family: var(--data);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brume);
+  margin: 0 0 5px;
+}
+
+.mesure dd {
+  font-family: var(--data);
+  font-size: 17px;
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+}
+.mesure[data-couche='flux'] dd { color: var(--flux); }
+.mesure[data-couche='geo'] dd  { color: var(--zenith); }
+
+/* --- Graphique ----------------------------------------------------------- */
+
+.courbe { width: 100%; height: auto; display: block; }
+.legende {
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  font-family: var(--data);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--brume);
+  margin-top: 10px;
+}
+.legende span::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 2px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.legende .l-flux::before   { background: var(--flux); }
+.legende .l-clair::before  { background: repeating-linear-gradient(90deg, var(--flux-sourd) 0 4px, transparent 4px 7px); }
+.legende .l-zenith::before { background: var(--zenith); }
+
+/* --- Sortie domotique ---------------------------------------------------- */
+
+.sortie {
+  background: var(--nuit);
+  border: 1px solid var(--trait);
+  border-radius: var(--r);
+  padding: 14px;
+  font-family: var(--data);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--zenith);
+  overflow-x: auto;
+  margin: 0;
+  max-height: 320px;
+}
+
+.actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+
+.lien {
+  background: transparent;
+  border: 1px solid var(--trait);
+  border-radius: var(--r);
+  color: var(--givre);
+  font-family: var(--data);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 8px 13px;
+  cursor: pointer;
+}
+.lien:hover { border-color: var(--zenith); color: var(--zenith); }
+
+/* --- États : chargement, erreur, vide ------------------------------------ */
+
+.message {
+  font-family: var(--data);
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 16px;
+  border-radius: var(--r);
+  border: 1px solid var(--trait);
+}
+.message[data-ton='erreur'] { border-color: var(--alerte); color: var(--alerte); }
+.message[data-ton='vide']   { color: var(--brume); }
+
+.masque { display: none !important; }
+
+.chargement {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--trait);
+  border-top-color: var(--flux);
+  border-radius: 50%;
+  animation: rotation 0.7s linear infinite;
+  vertical-align: -1px;
+  margin-right: 8px;
+}
+
+@keyframes rotation { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+.pied {
+  margin-top: 34px;
+  padding-top: 16px;
+  border-top: 1px solid var(--trait);
+  font-family: var(--data);
+  font-size: 11px;
+  color: var(--brume);
+}
+.pied a { color: var(--brume); }
+
+/* --- Surface visée --------------------------------------------------------- */
+
+.surface {
+  border: 1px solid var(--trait);
+  border-radius: var(--r);
+  padding: 12px 13px 4px;
+  margin: 0 0 14px;
+}
+
+.surface legend {
+  font-family: var(--data);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brume);
+  padding: 0 6px;
+}
+
+.surface .aide { margin-bottom: 10px; }
+
+.boussole { width: 100%; max-width: 190px; height: auto; display: block; }
+
+@media (max-width: 700px) {
+  .releve { grid-template-columns: 1fr; }
+  .boussole { margin: 4px auto 0; }
+}
