@@ -52,15 +52,13 @@ const PropertiesService = { getScriptProperties: () => ({
   getProperty: (cle) => proprietes[cle] ?? null,
   setProperty: (cle, valeur) => { proprietes[cle] = String(valeur); },
 }) };
-const courriels = [];
-const MailApp = { sendEmail: (a, sujet, corps) => courriels.push({ a, sujet, corps }) };
 
 let gs;
 ok('apps-script : syntaxe JavaScript valide et executable', (() => {
   try {
-    const executer = new Function('UrlFetchApp', 'ContentService', 'CacheService', 'PropertiesService', 'MailApp',
+    const executer = new Function('UrlFetchApp', 'ContentService', 'CacheService', 'PropertiesService',
       `${source}\n; return { positionSolaire, ghiCielClair, irradianceSurPlan, ensoleillementJournalier, doGet, doPost, sondeProgrammee };`);
-    gs = executer(UrlFetchApp, ContentService, CacheService, PropertiesService, MailApp);
+    gs = executer(UrlFetchApp, ContentService, CacheService, PropertiesService);
     return typeof gs.doGet === 'function';
   } catch (e) { console.log('   ', e.message); return false; }
 })());
@@ -172,24 +170,25 @@ ok('doPost : sonde non configuree -> phrase d\'erreur explicite',
    dialogflow({}).fulfillmentText.includes('LAT'));
 proprietes.LAT = latSauve;
 
-/* --- Notifications gratuites : e-mail et ntfy, au changement d'etat ----- */
+/* --- Notification ntfy, au changement d'etat seulement ------------------ */
 
-Object.assign(proprietes, { EMAIL: 'moi@exemple.fr', NTFY_SUJET: 'sonde-essai-7c2f' });
+Object.assign(proprietes, { NTFY_SUJET: 'sonde-essai-7c2f' });
 delete proprietes.ETAT_PRECEDENT;
 notificationNtfy = null;
 
 const premiere = gs.sondeProgrammee();
-ok('changement d\'etat -> courriel et ntfy partent',
-   courriels.length === 1 && courriels[0].sujet.includes(premiere.etat)
-   && notificationNtfy !== null && notificationNtfy.url.endsWith('/sonde-essai-7c2f')
-   && notificationNtfy.options.method === 'post',
-   `-> « ${courriels[0]?.sujet} »`);
+ok('changement d\'etat -> notification ntfy',
+   notificationNtfy !== null && notificationNtfy.url.endsWith('/sonde-essai-7c2f')
+   && notificationNtfy.options.method === 'post'
+   && notificationNtfy.options.headers.Title.includes(premiere.etat)
+   && /^[\x20-\x7e]*$/.test(notificationNtfy.options.headers.Title),
+   `-> « ${notificationNtfy?.options.headers.Title} »`);
 
 notificationNtfy = null;
 urlIFTTTRecue = null;
 gs.sondeProgrammee();
-ok('etat inchange -> aucune nouvelle notification, mais IFTTT part toujours',
-   courriels.length === 1 && notificationNtfy === null && urlIFTTTRecue !== null);
+ok('etat inchange -> pas de notification, mais IFTTT part toujours',
+   notificationNtfy === null && urlIFTTTRecue !== null);
 
 /* --- Evenement nomme par l'etat : scenes SmartLife / Google Home --------- */
 
@@ -205,3 +204,28 @@ urlsIFTTT.length = 0;
 gs.sondeProgrammee();
 ok('etat inchange -> seul l\'evenement de mesure part, pas celui d\'etat',
    urlsIFTTT.length === 1 && urlsIFTTT[0].includes('/trigger/soleil_facade/'));
+
+/* --- Plusieurs sondes : sept facades, un seul appel a la source ---------- */
+
+const ORIENTATIONS = [0, 45, 90, 135, 180, 270, 315];
+proprietes.SONDES = JSON.stringify(ORIENTATIONS.map((o, i) => ({
+  nom: 'facade' + (i + 1), lat: 49.61, lon: 1.21, orientation: o,
+})));
+urlsIFTTT.length = 0;
+notificationNtfy = null;
+const avantMulti = appelsSource;
+
+const resultats = gs.sondeProgrammee();
+ok('sept sondes -> sept sorties, nommees et orientees',
+   Array.isArray(resultats) && resultats.length === 7
+   && resultats[0].point.libelle === 'facade1'
+   && resultats.every((r, i) => r.surface.orientation_deg === ORIENTATIONS[i]
+                                && r.surface.inclinaison_deg === 90));
+ok('meme point -> un seul appel a la source pour les sept',
+   appelsSource - avantMulti === 1, `-> ${appelsSource - avantMulti} appel(s)`);
+ok('evenements d\'etat nommes par sonde',
+   urlsIFTTT.some((u) => u.includes('/trigger/sonde_facade1_'))
+   && urlsIFTTT.some((u) => u.includes('/trigger/sonde_facade7_')));
+ok('memoire d\'etat par sonde',
+   proprietes.ETAT_PRECEDENT_facade1 !== undefined
+   && proprietes.ETAT_PRECEDENT_facade7 !== undefined);

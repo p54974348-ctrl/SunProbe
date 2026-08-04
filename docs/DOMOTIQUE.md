@@ -280,7 +280,7 @@ Dans l'application Smart Life : **Scénario** → **Tap-to-Run** (« exécuter a
 
 ### 2. Côté sonde : les événements nommés par l'état
 
-Dans les propriétés du script Apps Script, ajouter `IFTTT_EVENEMENT_ETAT` (par exemple `sonde`). **Au changement d'état seulement**, la sonde déclenche alors l'événement correspondant : `sonde_plein_soleil`, `sonde_soleil_faible`, `sonde_ombre`, `sonde_nuit` — avec score, état et soleil direct en value1/2/3.
+Dans les propriétés du script Apps Script, ajouter `IFTTT_EVENEMENT_ETAT` (par exemple `sonde`). **Au changement d'état seulement**, la sonde déclenche alors l'événement correspondant : `sonde_plein_soleil`, `sonde_soleil_faible`, `sonde_ombre`, `sonde_nuit` — avec score, état et soleil direct en value1/2/3. Avec plusieurs sondes (propriété `SONDES`), le nom s'intercale : `sonde_facade_no_plein_soleil`.
 
 ### 3. Côté IFTTT : une applet gratuite par état utile
 

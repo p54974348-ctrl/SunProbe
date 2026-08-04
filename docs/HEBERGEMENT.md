@@ -93,7 +93,8 @@ Quand Cloudflare résiste, Google Apps Script est le chemin de repli le plus cou
 - Google répond par une **redirection 302** vers `googleusercontent.com` : le client doit la suivre (`curl -L` ; IFTTT et Home Assistant le font d'eux-mêmes).
 - Pas de code de statut personnalisé : les erreurs reviennent en `200` avec un corps `{ "erreur": … }`.
 - Quotas du compte gratuit : 20 000 appels sortants/jour, 90 min d'exécution/jour — très au-dessus d'un usage domotique. Le cache interne (5 min) ménage aussi le quota Open-Meteo.
-- **Sonde programmée, sans applet « aller »** : renseigner les propriétés du script (`LAT`, `LON`, `ORIENTATION`, `INCLINAISON`, `IFTTT_EVENEMENT`, `IFTTT_CLE`) puis ajouter un déclencheur horaire sur `sondeProgrammee`. La mesure part vers IFTTT toutes les heures et la clé ne circule dans aucune URL.
+- **Sonde programmée, sans applet « aller »** : renseigner les propriétés du script (`LAT`, `LON`, `ORIENTATION`, `INCLINAISON`, `IFTTT_EVENEMENT`, `IFTTT_CLE`, `IFTTT_EVENEMENT_ETAT`, `NTFY_SUJET`) puis ajouter un déclencheur horaire sur `sondeProgrammee`. La mesure part vers IFTTT toutes les heures et la clé ne circule dans aucune URL.
+- **Plusieurs sondes** : la propriété `SONDES` accepte un tableau JSON, une entrée par surface — `[{"nom":"facade_no","lat":49.54,"lon":1.10,"orientation":333}, …]`. Sept façades du même point ne coûtent qu'un appel à la source par mesure ; mémoire d'état, notification ntfy et événements IFTTT sont tenus **par sonde** (`sonde_facade_no_plein_soleil`…).
 - Ce fichier duplique le noyau (Apps Script n'accepte pas les modules ES) : `tests/apps-script.test.mjs` garantit qu'il ne diverge pas des modules, comme pour le prototype.
 
 ### La chaîne 100 % gratuite
@@ -105,12 +106,11 @@ Chaque maillon a une version sans le moindre coût ni carte bancaire :
 | La page web | GitHub Pages |
 | L'API JSON publique | Apps Script (`doGet`) |
 | Mesurer toutes les heures | Déclencheur horaire Apps Script (`sondeProgrammee`) |
-| Être prévenu par e-mail | Propriété `EMAIL` — `MailApp`, rien à installer |
 | Notification mobile | Propriété `NTFY_SUJET` — [ntfy.sh](https://ntfy.sh), gratuit et sans compte : installer l'appli ntfy et s'abonner au même sujet |
 | Piloter un objet connecté | Pont IFTTT (2 applets gratuites) ou Home Assistant local |
 | Question en langage naturel | Dialogflow ES, gratuit en texte (ci-dessous) |
 
-Le courriel et la notification ntfy ne partent qu'**au changement d'état** (`plein soleil` → `ombre`…) : mémoire dans la propriété `ETAT_PRECEDENT`, pas d'alerte horaire répétitive — et pas besoin du tri payant d'IFTTT Pro. Le sujet ntfy est public par nature : en choisir un long et impossible à deviner (ex. `sonde-facade-x7k2m9`), sans y mettre de secret.
+La notification ntfy ne part qu'**au changement d'état** (`plein soleil` → `ombre`…) : mémoire par sonde dans `ETAT_PRECEDENT[_nom]`, pas d'alerte horaire répétitive — et pas besoin du tri payant d'IFTTT Pro. Le sujet ntfy est public par nature : en choisir un long et impossible à deviner (ex. `sonde-facade-x7k2m9`), sans y mettre de secret.
 
 ### Agent Dialogflow ES : demander l'ensoleillement en langage naturel
 
