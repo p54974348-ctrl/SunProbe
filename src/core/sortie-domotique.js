@@ -25,6 +25,7 @@ const arrondi = (v, d = 0) => (Number.isFinite(v) ? Number(v.toFixed(d)) : null)
  * @param {object} p.evaluation    Retour de evaluer().
  * @param {object} p.mesures       { ghi, dni, dhi, nuages } sur plan horizontal.
  * @param {object} p.geometrie     Retour de positionSolaire().
+ * @param {object} [p.ensoleillement] Retour de ensoleillementJournalier().
  * @param {string} [p.source]
  * @param {'ok'|'approchee'|'indisponible'} [p.fraicheur]
  */
@@ -36,6 +37,7 @@ export function construireSortie({
   evaluation,
   mesures = {},
   geometrie,
+  ensoleillement = null,
   source = 'open-meteo',
   fraicheur = 'ok',
 }) {
@@ -66,6 +68,18 @@ export function construireSortie({
     etat: evaluation.etat, // "plein soleil" | "soleil faible" | "ombre" | "nuit"
     score: evaluation.score, // 0-100, sur la surface décrite ci-dessus
     soleil_direct: evaluation.soleilDirect, // le faisceau touche-t-il la face ?
+
+    /**
+     * Part du jour local pendant laquelle la face reçoit le soleil direct
+     * (DNI au moins au seuil OMM et soleil devant la face). Champ ajouté,
+     * rétrocompatible. `pourcentage` vaut null en nuit polaire : sans jour,
+     * un pourcentage du jour n'a pas de sens.
+     */
+    ensoleillement_jour: {
+      pourcentage: ensoleillement?.pourcentage ?? null,
+      duree_soleil_h: ensoleillement?.dureeSoleilH ?? null,
+      duree_jour_h: ensoleillement?.dureeJourH ?? null,
+    },
 
     mesures: {
       /** Grandeur qui porte le score : irradiance reçue par la surface. */

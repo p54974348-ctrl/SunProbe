@@ -73,7 +73,7 @@ Le dépôt doit être poussé sur GitHub — c'est le prérequis des sessions cl
 npm test
 ```
 
-155 vérifications, sans aucun accès réseau externe :
+170 vérifications, sans aucun accès réseau externe :
 
 - étanchéité des couches : le garde-fou `tests/architecture.test.mjs` fait échouer la suite si le noyau touche au réseau ou au DOM, ou si un seuil est codé en dur hors de `config.js` ;
 - position solaire recalée sur des repères astronomiques indépendants — hauteur aux deux solstices, heure du midi solaire, azimut plein sud dans l'hémisphère nord et plein nord à Sydney, soleil de minuit à Tromsø ;
@@ -82,6 +82,7 @@ npm test
 - tracé du graphique, sans débordement ni valeur non numérique, jusqu'à la nuit polaire ;
 - chaîne complète de bout en bout, avec une réponse d'API simulée ;
 - physique du plan orienté : angle d'incidence, contributions directe, diffuse et réfléchie, albédo, et le cas d'école du mur sud qui reçoit plus en hiver qu'en été ;
+- ensoleillement journalier : part du jour où la face reçoit le soleil direct, du mur nord en hiver (0 %) au soleil de minuit (100 %), nuit polaire rendue `null` ;
 - concordance stricte entre le prototype autonome et les modules, sur 150 configurations — écart maximal nul ;
 - les deux implémentations de l'API — service Node interrogé en HTTP sur localhost, et fonction Cloudflare dans un environnement Workers simulé : paramètres de surface, validation, cache, restriction par point, temps processeur.
 
@@ -103,6 +104,7 @@ npm test
   "etat": "soleil faible",
   "score": 54,
   "soleil_direct": true,
+  "ensoleillement_jour": { "pourcentage": 62, "duree_soleil_h": 10, "duree_jour_h": 16 },
   "mesures": {
     "irradiance_surface_w_m2": 484,
     "surface_direct_w_m2": 348,
@@ -123,6 +125,8 @@ npm test
 ```
 
 Trois champs pilotent : `score`, `etat`, et `soleil_direct` — le faisceau touche-t-il cette face ? Le reste sert au diagnostic.
+
+`ensoleillement_jour` résume la journée entière pour la surface décrite : la part des heures de jour pendant lesquelles elle reçoit le soleil direct (DNI au seuil OMM de 120 W/m² au moins, soleil devant la face). Un mur nord-ouest à 27 % l'été et 0 % l'hiver, c'est toute l'exposition d'une façade en un chiffre. En nuit polaire, `pourcentage` vaut `null` : il n'y a pas de jour.
 
 Ici, un mur sud noté 54 alors que l'horizontale est à 79 : à 14 h en juillet le soleil est haut et rase la façade. En décembre, le rapport s'inverse.
 

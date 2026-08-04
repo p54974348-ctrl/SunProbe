@@ -85,12 +85,18 @@ export function afficherResultat({ sortie, serieJour, indexJour, permalien }) {
     soleilDirect: sortie.soleil_direct,
   });
 
+  // Part du jour où la face reçoit le soleil direct, ex. « 62 % · 9 h/15 h ».
+  const e = sortie.ensoleillement_jour;
+  const soleilDuJour =
+    !e || e.pourcentage === null ? '—' : `${e.pourcentage} % · ${e.duree_soleil_h} h/${e.duree_jour_h} h`;
+
   const lignes = incline
     ? [
         ['Sur la surface', nb(m.irradiance_surface_w_m2, ' W/m²'), 'flux'],
         ['dont direct', nb(m.surface_direct_w_m2, ' W/m²'), 'flux'],
         ['dont diffus', nb(m.surface_diffus_w_m2, ' W/m²'), 'flux'],
         ['dont sol', nb(m.surface_sol_w_m2, ' W/m²'), 'flux'],
+        ['Soleil du jour', soleilDuJour, 'flux'],
         ['Incidence', nb(g.angle_incidence_deg, '°', 0), 'geo'],
         ['Hauteur', nb(g.hauteur_deg, '°', 1), 'geo'],
         ['Azimut', `${nb(g.azimut_deg, '°', 0)} ${g.azimut_cardinal}`, 'geo'],
@@ -101,6 +107,7 @@ export function afficherResultat({ sortie, serieJour, indexJour, permalien }) {
         ['DNI direct', nb(m.dni_w_m2, ' W/m²'), 'flux'],
         ['DHI diffus', nb(m.dhi_w_m2, ' W/m²'), 'flux'],
         ['Nuages', nb(m.couverture_nuageuse_pct, ' %'), 'flux'],
+        ['Soleil du jour', soleilDuJour, 'flux'],
         ['Hauteur', nb(g.hauteur_deg, '°', 1), 'geo'],
         ['Azimut', `${nb(g.azimut_deg, '°', 0)} ${g.azimut_cardinal}`, 'geo'],
         ['Ciel clair', nb(g.ghi_ciel_clair_w_m2, ' W/m²'), 'geo'],
