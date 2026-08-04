@@ -1,0 +1,6 @@
+# Fichiers exclus des assets publiés par wrangler (syntaxe .gitignore).
+# node_modules est créé par l'outillage de Cloudflare au moment du
+# déploiement : workerd y pèse 122 Mio, la limite d'un asset est 25 Mio.
+node_modules
+.git
+.wrangler

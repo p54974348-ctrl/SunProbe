@@ -43,18 +43,16 @@ Le dépôt doit rester **public** pour que Pages soit gratuit. Les limites annon
 
 Un seul hébergement pour les deux, sans machine à administrer et sans mise en veille.
 
-1. Créer un compte Cloudflare (gratuit), aller dans **Workers & Pages** → **Create** → onglet **Pages** → **Connect to Git**. **Bien choisir « Pages », pas « Worker »** — le tableau de bord met les Workers en avant, mais un Worker ne sert pas le dossier `functions/` et le déploiement échoue (voir l'encadré ci-dessous).
-2. Sélectionner le dépôt `SunProbe`. Le fichier `wrangler.toml` à la racine décrit déjà le projet : racine publiée telle quelle, aucune commande de construction.
-3. Si le formulaire pose les questions malgré tout : *Framework preset* **None**, *Build command* **vide**, *Build output directory* `/`.
-4. Déployer.
+Le dépôt se déploie par **les deux chemins** que propose le tableau de bord — la route `/api/v1/ensoleillement` est la même fonction dans les deux cas :
 
-Cloudflare détecte automatiquement le dossier `functions/` et publie `functions/api/v1/ensoleillement.js` sur la route `/api/v1/ensoleillement`.
+**Flux « Worker »** — celui que le tableau de bord met en avant. **Workers & Pages** → **Create** → connecter le dépôt `SunProbe`, rien à configurer : `wrangler.toml` décrit tout. `worker.js` route l'API vers la fonction existante et délègue le reste aux fichiers statiques ; `.assetsignore` écarte `node_modules` des fichiers publiés.
 
-### En cas d'erreur « Asset too large » au déploiement
+**Flux « Pages » classique** — onglet **Pages** → **Connect to Git** : *Framework preset* **None**, *Build command* **vide**, *Build output directory* `/`. Cloudflare détecte le dossier `functions/` et publie l'API automatiquement.
 
-Le symptôme : `We found a file /opt/buildhome/repo/node_modules/workerd/bin/workerd with a size of 122 MiB` (la limite est 25 Mio). Ce fichier n'est pas dans le dépôt : c'est l'outillage que Cloudflare vient d'installer. Ce message signifie que le projet a été créé comme **Worker** : Cloudflare installe alors `wrangler` dans `node_modules`, puis tente de publier tout le dépôt — `node_modules` compris — comme fichiers statiques.
+### En cas d'erreur au déploiement en flux Worker
 
-Remède : supprimer ce projet et le recréer en **Pages** (étapes ci-dessus). En Pages, `node_modules` est ignoré d'office et l'API fonctionne.
+- **« Asset too large » sur `node_modules/workerd` (122 Mio)** : le dépôt déployé ne porte pas encore `.assetsignore` — ce fichier n'est pas dans le dépôt, c'est l'outillage que Cloudflare vient d'installer. Mettre la branche déployée à jour, puis relancer.
+- **« Missing entry-point to Worker script or to assets directory »** : le dépôt déployé ne porte pas encore `worker.js`/`wrangler.toml` avec `main` et `[assets]`. Même remède : déployer un `main` à jour.
 
 ```bash
 curl 'https://sunprobe.pages.dev/api/v1/ensoleillement?lat=49.4431&lon=1.0993'
