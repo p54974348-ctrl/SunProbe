@@ -264,3 +264,35 @@ Home Assistant expose déjà `sun.sun` avec `elevation` et `azimuth`, ce qui cou
   ```
 
 - **Un débord de toit ou un brise-soleil n'est pas modélisé** non plus. En été, ils coupent une grande partie du direct sur une fenêtre sud, et rien en hiver. Si votre façade en a un, le score la surestimera aux heures hautes.
+
+---
+
+## SmartLife (Tuya) et Google Home
+
+Ni SmartLife ni Google Home ne savent appeler une API : ils savent en revanche **exécuter des scènes**. La sonde s'y raccorde donc par IFTTT, en trois pièces — et sans abonnement, grâce aux événements **nommés par l'état**.
+
+### 1. Côté SmartLife : des scènes « Tap-to-Run »
+
+Dans l'application Smart Life : **Scénario** → **Tap-to-Run** (« exécuter au toucher »), une scène par situation, par exemple :
+
+- `Façade au soleil` — descendre le volet à mi-course, éteindre le chauffage d'appoint…
+- `Façade à l'ombre` — remonter le volet.
+
+### 2. Côté sonde : les événements nommés par l'état
+
+Dans les propriétés du script Apps Script, ajouter `IFTTT_EVENEMENT_ETAT` (par exemple `sonde`). **Au changement d'état seulement**, la sonde déclenche alors l'événement correspondant : `sonde_plein_soleil`, `sonde_soleil_faible`, `sonde_ombre`, `sonde_nuit` — avec score, état et soleil direct en value1/2/3.
+
+### 3. Côté IFTTT : une applet gratuite par état utile
+
+Le compte IFTTT gratuit offre 2 applets — assez pour le couple qui compte :
+
+- **Si** Webhooks « Receive a web request », événement `sonde_plein_soleil` → **Alors** Smart Life « Activate scene » : `Façade au soleil`.
+- **Si** événement `sonde_ombre` → **Alors** Smart Life : `Façade à l'ombre`.
+
+C'est le nom de l'événement qui porte l'état : aucun tri à faire côté IFTTT, donc pas besoin du « filter code » payant.
+
+### Et Google Home ?
+
+Liez SmartLife à Google Home (application Google Home → Ajouter → Fonctionne avec Google → Smart Life) : les appareils et les scènes Tuya y apparaissent. Vous y **voyez** l'effet de la sonde (volets, prises…) et pouvez dire « OK Google, active Façade au soleil » pour rejouer une scène à la voix.
+
+Deux limites honnêtes. Google Home ne sait pas *prononcer* une réponse personnalisée de la sonde : Google a fermé ce canal (Conversational Actions) en 2023 — pour une réponse parlée ou affichée, les chemins restent la notification ntfy/e-mail, la page web, ou l'agent Dialogflow en texte. Et il n'y a pas de « capteur virtuel » gratuit et pérenne côté Tuya : l'état de la sonde se matérialise par ses effets (scènes), pas par une tuile de mesure — pour une vraie tuile capteur, c'est Home Assistant (section ci-dessus).

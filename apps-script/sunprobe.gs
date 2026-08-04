@@ -399,9 +399,13 @@ function doPost(e) {
  * Lit le point et la surface dans les propriétés du script (LAT, LON,
  * ORIENTATION, INCLINAISON) : rien à appeler de l'extérieur.
  *
- * Trois canaux de restitution, tous facultatifs, tous gratuits :
+ * Canaux de restitution, tous facultatifs, tous gratuits :
  *   - IFTTT_EVENEMENT + IFTTT_CLE : déclenche le Webhook à CHAQUE mesure —
  *     c'est le rythme du déclencheur qui cadence l'automatisme ;
+ *   - IFTTT_EVENEMENT_ETAT (+ IFTTT_CLE) : au changement d'état seulement,
+ *     déclenche un événement NOMMÉ PAR L'ÉTAT (ex. sonde_plein_soleil,
+ *     sonde_ombre) — une applet IFTTT gratuite par état utile, chacune
+ *     activant sa scène SmartLife, elle-même visible dans Google Home ;
  *   - EMAIL : un courriel (MailApp, rien à installer) ;
  *   - NTFY_SUJET : une notification mobile via ntfy.sh — service gratuit,
  *     sans compte : installer l'appli ntfy et s'abonner au même sujet.
@@ -431,6 +435,14 @@ function sondeProgrammee() {
   const precedent = prop.getProperty('ETAT_PRECEDENT');
   prop.setProperty('ETAT_PRECEDENT', sortie.etat);
   if (sortie.etat !== precedent) {
+    // Événement IFTTT nommé par l'état — sonde_plein_soleil, sonde_ombre… —
+    // pour brancher chaque état sur sa scène SmartLife / Google Home sans le
+    // tri payant d'IFTTT Pro : une applet gratuite par état utile.
+    const baseEtat = prop.getProperty('IFTTT_EVENEMENT_ETAT');
+    if (baseEtat && cle) {
+      declencherIFTTT(baseEtat + '_' + sortie.etat.replace(/ /g, '_'), cle, sortie);
+    }
+
     const courriel = prop.getProperty('EMAIL');
     if (courriel) {
       MailApp.sendEmail(courriel,

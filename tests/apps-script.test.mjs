@@ -30,9 +30,10 @@ const previsions = {
 
 let appelsSource = 0;
 let urlIFTTTRecue = null;
+const urlsIFTTT = [];
 let notificationNtfy = null;
 const UrlFetchApp = { fetch(url, options) {
-  if (String(url).includes('maker.ifttt.com')) { urlIFTTTRecue = String(url); return { getContentText: () => 'Congratulations!' }; }
+  if (String(url).includes('maker.ifttt.com')) { urlIFTTTRecue = String(url); urlsIFTTT.push(String(url)); return { getContentText: () => 'Congratulations!' }; }
   if (String(url).includes('ntfy.sh')) { notificationNtfy = { url: String(url), options }; return { getContentText: () => 'ok' }; }
   appelsSource++;
   return { getContentText: () => JSON.stringify(previsions) };
@@ -189,3 +190,18 @@ urlIFTTTRecue = null;
 gs.sondeProgrammee();
 ok('etat inchange -> aucune nouvelle notification, mais IFTTT part toujours',
    courriels.length === 1 && notificationNtfy === null && urlIFTTTRecue !== null);
+
+/* --- Evenement nomme par l'etat : scenes SmartLife / Google Home --------- */
+
+proprietes.IFTTT_EVENEMENT_ETAT = 'sonde';
+delete proprietes.ETAT_PRECEDENT;
+urlsIFTTT.length = 0;
+const mesureEtat = gs.sondeProgrammee();
+const cheminEtat = '/trigger/sonde_' + mesureEtat.etat.replace(/ /g, '_') + '/with/key/CLE2';
+ok('changement d\'etat -> evenement IFTTT nomme par l\'etat',
+   urlsIFTTT.some((u) => u.includes(cheminEtat)), `-> ${cheminEtat}`);
+
+urlsIFTTT.length = 0;
+gs.sondeProgrammee();
+ok('etat inchange -> seul l\'evenement de mesure part, pas celui d\'etat',
+   urlsIFTTT.length === 1 && urlsIFTTT[0].includes('/trigger/soleil_facade/'));

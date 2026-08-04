@@ -9,7 +9,7 @@ Réponds en français. Le code, les commentaires, les noms de variables et la do
 ## Commandes
 
 ```bash
-npm test        # suite complète, 200 vérifications, aucun accès réseau externe
+npm test        # suite complète, 202 vérifications, aucun accès réseau externe
 npm run serve   # page sur http://localhost:5173 (les modules ES exigent un serveur HTTP)
 npm start       # service JSON domotique sur http://localhost:8787
 ```
@@ -120,7 +120,7 @@ Accessibilité : chaque SVG porte un `aria-label` décrivant le résultat en cla
 
 ### Vérifié
 
-200 tests hors ligne : position solaire recalée sur des repères astronomiques indépendants (solstices, midi solaire, hémisphère sud, soleil de minuit), physique du plan orienté, ensoleillement journalier (murs orientés, nuit polaire, soleil de minuit), seuils, sélection horaire, tracés SVG sans débordement, concordance prototype/modules, et les deux implémentations d'API.
+202 tests hors ligne : position solaire recalée sur des repères astronomiques indépendants (solstices, midi solaire, hémisphère sud, soleil de minuit), physique du plan orienté, ensoleillement journalier (murs orientés, nuit polaire, soleil de minuit), seuils, sélection horaire, tracés SVG sans débordement, concordance prototype/modules, et les deux implémentations d'API.
 
 ### Non vérifié
 
