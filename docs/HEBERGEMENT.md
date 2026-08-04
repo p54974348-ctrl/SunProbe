@@ -17,14 +17,18 @@ Le service `server/sunprobe-api.mjs` est une pièce distincte, utile seulement s
 
 ## Option 1 — GitHub Pages
 
-Le plus court chemin : le dépôt est déjà sur GitHub, aucun compte supplémentaire, aucune configuration.
+Le plus court chemin : le dépôt est déjà sur GitHub, aucun compte supplémentaire. Deux façons de publier, au choix.
 
-1. Pousser le projet sur `main`.
-2. Dépôt → **Settings** → **Pages**.
-3. *Source* : **Deploy from a branch**. *Branch* : `main`, dossier `/ (root)`.
-4. Enregistrer. La mise en ligne prend une à deux minutes.
+**Par le workflow fourni — recommandé.** `.github/workflows/pages.yml` rejoue `npm test` puis publie la racine du dépôt à chaque poussée sur `main` : une régression ne part pas en ligne.
+
+1. Dépôt → **Settings** → **Pages**.
+2. *Source* : **GitHub Actions**. C'est tout — la prochaine poussée sur `main` publie (ou lancer le workflow à la main depuis l'onglet *Actions*).
+
+**Par la branche — sans filet.** *Source* : **Deploy from a branch**, branche `main`, dossier `/ (root)`. Plus court encore, mais rien ne rejoue les tests avant la mise en ligne.
 
 Résultat : `https://p54974348-ctrl.github.io/SunProbe/`
+
+La page y est servie sous le sous-chemin `/SunProbe/` : tous les chemins du projet étant relatifs, elle fonctionne telle quelle — vérifié sous Chromium en servant le dépôt sous ce même préfixe.
 
 Le fichier `.nojekyll` à la racine désactive le prétraitement Jekyll, qui n'a rien à faire ici et ignorerait certains fichiers.
 

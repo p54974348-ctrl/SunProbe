@@ -1,0 +1,50 @@
+# Publication de la page sur GitHub Pages.
+#
+# Prérequis, une seule fois : dépôt -> Settings -> Pages -> Source : « GitHub Actions ».
+# Ensuite, chaque poussée sur main rejoue les tests puis publie la racine du
+# dépôt telle quelle — le projet n'a ni construction ni dépendance.
+#
+# Seule la page statique est publiée : GitHub Pages n'exécute aucun code
+# serveur, la route /api/v1/ensoleillement n'existe pas ici (voir
+# docs/HEBERGEMENT.md pour les options qui la fournissent).
+
+name: Publier sur GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm test
+
+  publier:
+    needs: tests
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploiement.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deploiement
+        uses: actions/deploy-pages@v4
