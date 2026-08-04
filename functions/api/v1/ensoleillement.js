@@ -22,6 +22,7 @@
 import { lireParametres } from '../../../src/core/requete.js';
 import { sonder } from '../../../src/sonde.js';
 import { ErreurReseau } from '../../../src/data/http.js';
+import { sortieAvecPontIFTTT } from '../../../src/data/webhook-ifttt.js';
 
 const CACHE_SECONDES = 300;
 
@@ -70,7 +71,10 @@ export async function onRequestGet(context) {
 
   try {
     const { sortie } = await sonder(lecture.valeurs);
-    const reponse = json(sortie, 200, CACHE_SECONDES);
+    // Pont IFTTT : ici, le cache de périphérie espace aussi les déclenchements —
+    // une réponse servie du cache ne repasse pas par la fonction.
+    const corps = await sortieAvecPontIFTTT(sortie, lecture.valeurs.ifttt);
+    const reponse = json(corps, 200, CACHE_SECONDES);
     waitUntil(cache.put(cle, reponse.clone()));
     return reponse;
   } catch (err) {

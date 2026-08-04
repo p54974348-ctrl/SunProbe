@@ -10,7 +10,10 @@ globalThis.caches = { default: {
 const jour = new Date().toISOString().slice(0,10);
 const heures = Array.from({length:24},(_,h)=>`${jour}T${String(h).padStart(2,'0')}:00`);
 let appelsReseau = 0;
-globalThis.fetch = async () => { appelsReseau++; return { ok:true, status:200, json: async () => ({
+let urlIFTTTRecue = null;
+globalThis.fetch = async (url) => {
+  if (String(url).includes('maker.ifttt.com')) { urlIFTTTRecue = String(url); return { ok:true, status:200 }; }
+  appelsReseau++; return { ok:true, status:200, json: async () => ({
   latitude:49.44, longitude:1.1, elevation:32, utc_offset_seconds:7200, timezone:'Europe/Paris',
   hourly:{ time:heures,
     shortwave_radiation: heures.map((_,h)=>Math.max(0,Math.round(820*Math.sin((h-6)/12*Math.PI)))),
@@ -100,3 +103,15 @@ ok('inclinaison non numérique -> 400', (await appeler('?lat=49.4&lon=1.1&inclin
 ok('albédo hors bornes -> 400', (await appeler('?lat=49.4&lon=1.1&albedo=3')).status === 400);
 ok('surfaces différentes -> entrées de cache distinctes',
    (await lire(`?lat=49.4431&lon=1.0993${q}&inclinaison=90&orientation=90`)).surface.orientation_deg === 90);
+
+/* --- Pont IFTTT --------------------------------------------------------- */
+
+const pont = await lire(`?lat=49.4431&lon=1.0993${q}&inclinaison=90&orientation=180&ifttt_evenement=soleil&ifttt_cle=CLE1`);
+ok('pont IFTTT : déclenché et compte rendu dans la réponse', (() => {
+  const u = new URL(urlIFTTTRecue);
+  return pont.webhook_ifttt?.demande_envoyee === true
+    && u.pathname === '/trigger/soleil/with/key/CLE1'
+    && u.searchParams.get('value1') === String(pont.score);
+})());
+ok('ifttt_evenement sans ifttt_cle -> 400',
+   (await appeler('?lat=49.4&lon=1.1&ifttt_evenement=soleil')).status === 400);

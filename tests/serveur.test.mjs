@@ -7,9 +7,11 @@ const ok = (n, c, i = '') => { console.log(`${c ? 'PASS' : 'ECHEC'}  ${n} ${i}`)
 const jour = new Date().toISOString().slice(0, 10);
 const heures = Array.from({ length: 24 }, (_, h) => `${jour}T${String(h).padStart(2, '0')}:00`);
 let appels = 0;
+let urlIFTTTRecue = null;
 const vraiFetch = globalThis.fetch;
 globalThis.fetch = async (url) => {
   if (String(url).includes('127.0.0.1')) return vraiFetch(url);
+  if (String(url).includes('maker.ifttt.com')) { urlIFTTTRecue = String(url); return { ok: true, status: 200 }; }
   appels++;
   return { ok: true, status: 200, json: async () => ({
     latitude: 49.44, longitude: 1.1, elevation: 32,
@@ -67,5 +69,25 @@ ok('inclinaison invalide -> 400',
    (await get('/api/v1/ensoleillement?lat=49.4&lon=1.1&inclinaison=200')).status === 400);
 ok('la route inconnue documente les parametres',
    Object.keys((await (await get('/inconnu')).json()).parametres).includes('orientation'));
+
+/* --- Pont IFTTT : la sonde rappelle IFTTT, qui ne sait pas lire les reponses --- */
+
+const pont = await lire(q + '&inclinaison=90&orientation=180&ifttt_evenement=soleil&ifttt_cle=CLE1');
+ok('pont IFTTT : compte rendu dans la reponse', pont.webhook_ifttt?.demande_envoyee === true,
+   `-> evenement ${pont.webhook_ifttt?.evenement}`);
+ok('pont IFTTT : chemin et value1/2/3 conformes', (() => {
+  const u = new URL(urlIFTTTRecue);
+  return u.pathname === '/trigger/soleil/with/key/CLE1'
+    && u.searchParams.get('value1') === String(pont.score)
+    && u.searchParams.get('value2') === pont.etat
+    && u.searchParams.get('value3') === String(pont.soleil_direct);
+})());
+
+urlIFTTTRecue = null;
+await lire(q + '&inclinaison=90&orientation=180&ifttt_evenement=soleil&ifttt_cle=CLE1');
+ok('pont IFTTT : redeclenche meme quand la sortie vient du cache', urlIFTTTRecue !== null);
+
+ok('ifttt_evenement sans ifttt_cle -> 400',
+   (await get('/api/v1/ensoleillement?lat=49.4&lon=1.1&ifttt_evenement=soleil')).status === 400);
 
 process.exit(process.exitCode || 0);

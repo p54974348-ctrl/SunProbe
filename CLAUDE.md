@@ -9,7 +9,7 @@ Réponds en français. Le code, les commentaires, les noms de variables et la do
 ## Commandes
 
 ```bash
-npm test        # suite complète, 175 vérifications, aucun accès réseau externe
+npm test        # suite complète, 181 vérifications, aucun accès réseau externe
 npm run serve   # page sur http://localhost:5173 (les modules ES exigent un serveur HTTP)
 npm start       # service JSON domotique sur http://localhost:8787
 ```
@@ -79,15 +79,15 @@ Chacun a coûté un bug réel. Les tests correspondants existent : ne pas les su
 
 Trois champs pilotent un automatisme : `score`, `etat`, `soleil_direct`. Le reste sert au diagnostic. `ensoleillement_jour` (part du jour où la face reçoit le soleil direct, seuil OMM dans `config.js`) est un ajout rétrocompatible : `pourcentage` vaut `null` en nuit polaire, pas 0.
 
-Paramètres d'API : `lat`, `lon` (requis), `at`, `inclinaison`, `orientation`, `albedo`. Sans paramètre de surface, la surface est horizontale et la réponse est identique à celle d'avant l'ajout de l'orientation.
+Paramètres d'API : `lat`, `lon` (requis), `at`, `inclinaison`, `orientation`, `albedo`, plus le couple facultatif `ifttt_evenement`/`ifttt_cle`. Sans paramètre de surface, la surface est horizontale et la réponse est identique à celle d'avant l'ajout de l'orientation.
 
 Dans la page comme dans le prototype, les champs de surface sont **vides par défaut**. Vides → mesure du lieu, à plat, sans notion de surface visée. Orientation seule (ex. 329) → mur **vertical** tourné vers cette orientation ; une inclinaison saisie prime. `Number('')` valant 0 (piège n° 2), toute lecture de ces champs teste explicitement la chaîne vide.
 
-La page accepte aussi `format` (`html` par défaut, `json`), réglable dans le champ « Réponse » du formulaire : en mode JSON, elle ne rend que la sortie brute et l'URL courante tient lieu de permalien. C'est un affichage navigateur — l'API machine reste le service Node et la fonction Cloudflare.
+La page accepte aussi `format` (`html` par défaut, `json`), par paramètre d'URL uniquement — pas de réglage dans le formulaire : qui veut du JSON veut une URL. En mode JSON, elle ne rend que la sortie brute et l'URL courante tient lieu de permalien. C'est un affichage navigateur — l'API machine reste le service Node et la fonction Cloudflare.
 
 Deux natures de permalien : le lien **HTML** rejoue l'instant mesuré (il embarque `date` et `heure`) ; le lien **JSON** est une sonde vivante (lieu et surface seulement — chaque chargement mesure à l'heure courante du point, `at` absent dans le pipeline). Une URL JSON avec `date`/`heure` explicites reste figée.
 
-En mode JSON toujours, `ifttt_evenement` + `ifttt_cle` arment le pont IFTTT (`src/data/webhook-ifttt.js`) : après la mesure, la page déclenche l'événement avec les trois champs pilotes en value1/2/3, en no-cors (réponse opaque). La clé est un secret d'URL. Domaine à autoriser si on y touche en session cloud : `maker.ifttt.com`.
+Pont IFTTT : `ifttt_evenement` + `ifttt_cle`, sur **les trois points d'entrée** (les deux API, et la page en mode JSON). IFTTT ne sait pas lire la réponse d'une « web request » : c'est donc la sonde qui déclenche l'événement après la mesure, avec les trois champs pilotes en value1/2/3 (`sortieAvecPontIFTTT` dans `src/data/webhook-ifttt.js`, seule définition). Côté Node, le pont se déclenche même quand la sortie vient du cache ; côté Cloudflare, le cache de périphérie espace les déclenchements. La clé est un secret d'URL. Domaine à autoriser si on y touche en session cloud : `maker.ifttt.com`.
 
 ---
 
@@ -120,7 +120,7 @@ Accessibilité : chaque SVG porte un `aria-label` décrivant le résultat en cla
 
 ### Vérifié
 
-175 tests hors ligne : position solaire recalée sur des repères astronomiques indépendants (solstices, midi solaire, hémisphère sud, soleil de minuit), physique du plan orienté, ensoleillement journalier (murs orientés, nuit polaire, soleil de minuit), seuils, sélection horaire, tracés SVG sans débordement, concordance prototype/modules, et les deux implémentations d'API.
+181 tests hors ligne : position solaire recalée sur des repères astronomiques indépendants (solstices, midi solaire, hémisphère sud, soleil de minuit), physique du plan orienté, ensoleillement journalier (murs orientés, nuit polaire, soleil de minuit), seuils, sélection horaire, tracés SVG sans débordement, concordance prototype/modules, et les deux implémentations d'API.
 
 ### Non vérifié
 
