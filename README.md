@@ -29,6 +29,7 @@ La page appelle Open-Meteo directement depuis le navigateur : **aucun serveur n'
 |---|---|---|---|
 | **GitHub Pages** | ✅ | ❌ | Workflow fourni : Settings → Pages → Source « GitHub Actions » |
 | **Cloudflare Pages** | ✅ | ✅ | Connecter le dépôt, aucune commande de construction |
+| **Google Apps Script** | ❌ | ✅ | Coller `apps-script/sunprobe.gs`, déployer en application web |
 | **Chez soi** (Pi, NAS) | ✅ | ✅ | `node server/sunprobe-api.mjs` |
 
 Pour un usage domotique, la combinaison la plus saine est **la page sur GitHub Pages et l'API à la maison** : votre installation ne dépend alors d'aucun service extérieur et vos coordonnées ne sont pas publiées.
@@ -82,7 +83,9 @@ L'action « Webhooks — Make a web request » d'IFTTT n'exécute pas de JavaScr
 https://<votre-api>/api/v1/ensoleillement?lat=49.4431&lon=1.0993&orientation=329&ifttt_evenement=soleil_facade&ifttt_cle=VOTRE_CLE
 ```
 
-Deux applets suffisent : la première appelle cette URL (sur un horaire, un bouton, un lever de soleil…) ; la seconde — « Webhooks : Receive a web request », événement `soleil_facade` — reçoit `value1` = score, `value2` = état, `value3` = soleil direct, et agit (volet, notification…). L'API est le service Node à la maison ou la fonction Cloudflare ; sur Cloudflare, le cache de périphérie (5 min) espace les déclenchements.
+Deux applets suffisent : la première appelle cette URL (sur un horaire, un bouton, un lever de soleil…) ; la seconde — « Webhooks : Receive a web request », événement `soleil_facade` — reçoit `value1` = score, `value2` = état, `value3` = soleil direct, et agit (volet, notification…). L'API est le service Node à la maison, la fonction Cloudflare ou la version Google Apps Script ; sur Cloudflare, le cache de périphérie (5 min) espace les déclenchements.
+
+La version Apps Script sait même se passer de la première applet : un déclencheur horaire Google (`sondeProgrammee`) mesure et pousse vers IFTTT tout seul, la clé restant dans les propriétés du script plutôt que dans une URL.
 
 La page porte le même pont : un lien JSON chargé dans un navigateur avec `ifttt_evenement`/`ifttt_cle` déclenche l'événement après la mesure — utile pour une tablette murale ou un favori.
 
@@ -102,7 +105,7 @@ Le dépôt doit être poussé sur GitHub — c'est le prérequis des sessions cl
 npm test
 ```
 
-183 vérifications, sans aucun accès réseau externe :
+195 vérifications, sans aucun accès réseau externe :
 
 - étanchéité des couches : le garde-fou `tests/architecture.test.mjs` fait échouer la suite si le noyau touche au réseau ou au DOM, ou si un seuil est codé en dur hors de `config.js` ;
 - position solaire recalée sur des repères astronomiques indépendants — hauteur aux deux solstices, heure du midi solaire, azimut plein sud dans l'hémisphère nord et plein nord à Sydney, soleil de minuit à Tromsø ;
