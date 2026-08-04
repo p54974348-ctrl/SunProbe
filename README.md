@@ -61,6 +61,18 @@ curl 'http://localhost:8787/api/v1/ensoleillement?lat=49.4431&lon=1.0993&inclina
 
 Voir [docs/DOMOTIQUE.md](docs/DOMOTIQUE.md) pour Home Assistant, Jeedom et Node-RED.
 
+## Mode JSON de la page
+
+La page sait aussi répondre en JSON : choisissez « JSON brut » dans le champ **Réponse** du formulaire, ou ajoutez `format=json` à un lien partageable :
+
+```
+https://p54974348-ctrl.github.io/SunProbe/?lat=49.4431&lon=1.0993&orientation=180&format=json
+```
+
+La page ne rend alors que la sortie domotique, telle quelle. Sans le paramètre — ou avec `format=html` — la page complète s'affiche : c'est le défaut.
+
+C'est un **affichage** : le document reste une page statique dont le JSON est produit par le navigateur. Un automatisme qui n'exécute pas de JavaScript doit interroger le service (`npm start`) ou la fonction Cloudflare, qui répondent en `application/json`.
+
 ## Continuer le développement ailleurs
 
 `CLAUDE.md` à la racine tient lieu de mémoire du projet : conventions, pièges déjà rencontrés, état des lieux, pistes ouvertes. Il est relu au début de chaque session Claude Code, en terminal comme dans le cloud.

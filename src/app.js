@@ -12,7 +12,7 @@ import { sonder } from './sonde.js';
 import { initialiserCarte, placerMarqueur } from './ui/carte.js';
 import {
   afficherResultat, afficherErreur, afficherChargement,
-  afficherAccueil, rafraichirAideSurface, copier,
+  afficherAccueil, afficherJsonBrut, rafraichirAideSurface, copier,
 } from './ui/rendu.js';
 
 const $ = (sel) => document.querySelector(sel);
@@ -65,6 +65,11 @@ function lireFormulaire() {
   };
 }
 
+/** Mode de réponse : « html » (la page) par défaut, « json » (sortie brute). */
+function lireFormat() {
+  return $('#format').value === 'json' ? 'json' : 'html';
+}
+
 function construirePermalien(sortie) {
   const u = new URL(window.location.href);
   u.search = '';
@@ -79,6 +84,7 @@ function construirePermalien(sortie) {
     p.set('inclinaison', sortie.surface.inclinaison_deg);
     p.set('orientation', sortie.surface.orientation_deg);
   }
+  if (lireFormat() === 'json') p.set('format', 'json');
   u.search = p.toString();
   return u.toString();
 }
@@ -110,17 +116,25 @@ async function lancer(demande) {
     });
 
     derniereSortie = resultat.sortie;
+
+    // Mode JSON : la sortie brute remplace la page, rien d'autre à dessiner.
+    if (lireFormat() === 'json') {
+      history.replaceState(null, '', construirePermalien(resultat.sortie));
+      afficherJsonBrut(resultat.sortie);
+      return;
+    }
+
     placerMarqueur(
       { latitude: resultat.sortie.point.latitude, longitude: resultat.sortie.point.longitude },
       true,
     );
     afficherResultat({ ...resultat, permalien: construirePermalien(resultat.sortie) });
   } catch (err) {
-    afficherErreur(
-      err instanceof ErreurReseau
-        ? err.message
-        : 'Erreur inattendue pendant la mesure. Réessayez dans un instant.',
-    );
+    const message = err instanceof ErreurReseau
+      ? err.message
+      : 'Erreur inattendue pendant la mesure. Réessayez dans un instant.';
+    if (lireFormat() === 'json') afficherJsonBrut({ erreur: message });
+    else afficherErreur(message);
     if (!(err instanceof ErreurReseau)) console.error(err);
   } finally {
     afficherChargement(false);
@@ -147,6 +161,7 @@ function initialiser() {
   $('#heure').value = params.get('heure') || now.heure;
   if (params.has('inclinaison')) $('#inclinaison').value = params.get('inclinaison');
   if (params.has('orientation')) $('#orientation').value = params.get('orientation');
+  if (params.get('format') === 'json') $('#format').value = 'json';
   synchroniserAideSurface();
 
   const lat = Number(params.get('lat'));

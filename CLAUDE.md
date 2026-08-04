@@ -83,6 +83,8 @@ Paramètres d'API : `lat`, `lon` (requis), `at`, `inclinaison`, `orientation`, `
 
 Dans la page comme dans le prototype, les champs de surface sont **vides par défaut**. Vides → mesure du lieu, à plat, sans notion de surface visée. Orientation seule (ex. 329) → mur **vertical** tourné vers cette orientation ; une inclinaison saisie prime. `Number('')` valant 0 (piège n° 2), toute lecture de ces champs teste explicitement la chaîne vide.
 
+La page accepte aussi `format` (`html` par défaut, `json`), réglable dans le champ « Réponse » du formulaire : en mode JSON, elle ne rend que la sortie brute et l'URL courante tient lieu de permalien. C'est un affichage navigateur — l'API machine reste le service Node et la fonction Cloudflare.
+
 ---
 
 ## Conventions de calcul
