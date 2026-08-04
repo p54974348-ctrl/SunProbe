@@ -85,6 +85,8 @@ Dans la page comme dans le prototype, les champs de surface sont **vides par dé
 
 La page accepte aussi `format` (`html` par défaut, `json`), réglable dans le champ « Réponse » du formulaire : en mode JSON, elle ne rend que la sortie brute et l'URL courante tient lieu de permalien. C'est un affichage navigateur — l'API machine reste le service Node et la fonction Cloudflare.
 
+Deux natures de permalien : le lien **HTML** rejoue l'instant mesuré (il embarque `date` et `heure`) ; le lien **JSON** est une sonde vivante (lieu et surface seulement — chaque chargement mesure à l'heure courante du point, `at` absent dans le pipeline). Une URL JSON avec `date`/`heure` explicites reste figée.
+
 ---
 
 ## Conventions de calcul

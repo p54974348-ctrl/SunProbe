@@ -71,6 +71,8 @@ https://p54974348-ctrl.github.io/SunProbe/?lat=49.4431&lon=1.0993&orientation=18
 
 La page ne rend alors que la sortie domotique, telle quelle. Sans le paramètre — ou avec `format=html` — la page complète s'affiche : c'est le défaut.
 
+**Le lien JSON est une sonde vivante** : il fige le lieu et la surface, jamais l'instant. À chaque chargement, la mesure est refaite à l'heure courante du point — c'est le lien à mettre en favori pour surveiller une façade. Pour figer un instant précis, ajoutez `date=AAAA-MM-JJ&heure=HH:MM` à l'URL.
+
 C'est un **affichage** : le document reste une page statique dont le JSON est produit par le navigateur. Un automatisme qui n'exécute pas de JavaScript doit interroger le service (`npm start`) ou la fonction Cloudflare, qui répondent en `application/json`.
 
 ## Continuer le développement ailleurs

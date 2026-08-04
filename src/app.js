@@ -70,15 +70,23 @@ function lireFormat() {
   return $('#format').value === 'json' ? 'json' : 'html';
 }
 
+/**
+ * Le lien HTML rejoue l'instant mesuré : il embarque date et heure.
+ * Le lien JSON est une sonde vivante : il fige le lieu et la surface,
+ * jamais l'instant — à chaque chargement, la mesure est refaite à
+ * l'heure courante du point.
+ */
 function construirePermalien(sortie) {
   const u = new URL(window.location.href);
   u.search = '';
   const p = new URLSearchParams({
     lat: sortie.point.latitude,
     lon: sortie.point.longitude,
-    date: sortie.horodatage_local.slice(0, 10),
-    heure: sortie.horodatage_local.slice(11, 16),
   });
+  if (lireFormat() !== 'json') {
+    p.set('date', sortie.horodatage_local.slice(0, 10));
+    p.set('heure', sortie.horodatage_local.slice(11, 16));
+  }
   if (sortie.point.libelle) p.set('lieu', sortie.point.libelle);
   if (sortie.surface.inclinaison_deg > 0) {
     p.set('inclinaison', sortie.surface.inclinaison_deg);
@@ -98,7 +106,7 @@ async function lancer(demande) {
     afficherErreur('Indiquez une adresse, des coordonnées, ou cliquez sur la carte.');
     return;
   }
-  if (!d.date || !d.heure) {
+  if (!d.enDirect && (!d.date || !d.heure)) {
     afficherErreur('Renseignez une date et une heure.');
     return;
   }
@@ -110,7 +118,8 @@ async function lancer(demande) {
     const resultat = await sonder({
       latitude: lieu.latitude,
       longitude: lieu.longitude,
-      at: `${d.date}T${d.heure}`,
+      // Mesure en direct : at absent -> maintenant, dans le fuseau du point.
+      at: d.enDirect ? null : `${d.date}T${d.heure}`,
       surface: d.surface,
       libelle: lieu.libelle ?? null,
     });
@@ -199,6 +208,8 @@ function initialiser() {
     lancer({
       ...lireFormulaire(),
       point: { latitude: lat, longitude: lon, libelle: params.get('lieu') },
+      // URL sans date ni heure : sonde vivante, mesurée à l'instant du chargement.
+      enDirect: !params.has('date') && !params.has('heure'),
     });
   } else {
     afficherAccueil();
