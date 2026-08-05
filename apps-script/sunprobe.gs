@@ -387,12 +387,51 @@ function phraseSortie(s) {
  *     — une applet IFTTT gratuite par cas utile, chacune activant sa scène
  *     SmartLife, elle-même visible dans Google Home ;
  *   - NTFY_SUJET : au changement d'état, notification mobile via ntfy.sh —
- *     gratuit, sans compte : installer l'appli ntfy et s'abonner au sujet.
- *     Le sujet fait office de secret : en choisir un impossible à deviner.
+ *     gratuit : installer l'appli ntfy et s'abonner au sujet. Le sujet fait
+ *     office de secret : en choisir un impossible à deviner. Depuis Apps
+ *     Script, ajouter NTFY_JETON (compte ntfy.sh gratuit -> jeton d'accès) :
+ *     les adresses IP de Google sont partagées et leur quota anonyme est
+ *     souvent déjà épuisé (erreur 429) — le jeton donne un quota à votre nom ;
+ *   - TELEGRAM_JETON + TELEGRAM_CHAT : au changement d'état, message
+ *     Telegram — gratuit et sans limite pratique. Créer un bot auprès de
+ *     @BotFather (le jeton), lui envoyer /start, puis lire son chat_id sur
+ *     https://api.telegram.org/bot<JETON>/getUpdates.
+ *
+ * Un canal en panne est ignoré : il ne bloque ni la mesure ni les autres
+ * canaux.
  *
  * Mémoire d'état par sonde dans ETAT_PRECEDENT[_nom] : pas d'alerte
  * horaire répétitive quand rien ne change.
  */
+/* Chaque canal est blindé : muteHttpExceptions évite qu'un refus HTTP
+   (quota, panne) ne lève une exception, et l'appelant enveloppe le tout
+   dans un try — la sonde mesure toujours, canal en panne ou pas. */
+
+function notifierNtfy(prop, titre, corps) {
+  const sujet = prop.getProperty('NTFY_SUJET');
+  if (!sujet) return;
+  const options = {
+    method: 'post',
+    payload: corps,
+    headers: { Title: titre },
+    muteHttpExceptions: true,
+  };
+  const jeton = prop.getProperty('NTFY_JETON');
+  if (jeton) options.headers.Authorization = 'Bearer ' + jeton;
+  UrlFetchApp.fetch('https://ntfy.sh/' + encodeURIComponent(sujet), options);
+}
+
+function notifierTelegram(prop, texte) {
+  const jeton = prop.getProperty('TELEGRAM_JETON');
+  const chat = prop.getProperty('TELEGRAM_CHAT');
+  if (!jeton || !chat) return;
+  UrlFetchApp.fetch('https://api.telegram.org/bot' + jeton + '/sendMessage', {
+    method: 'post',
+    payload: { chat_id: chat, text: texte },
+    muteHttpExceptions: true,
+  });
+}
+
 function listeDesSondes(prop) {
   const sondes = [];
 
@@ -456,7 +495,6 @@ function sondeProgrammee() {
   const cle = prop.getProperty('IFTTT_CLE');
   const evenementMesure = prop.getProperty('IFTTT_EVENEMENT');
   const baseEtat = prop.getProperty('IFTTT_EVENEMENT_ETAT');
-  const sujetNtfy = prop.getProperty('NTFY_SUJET');
   const sondes = listeDesSondes(prop);
 
   const sorties = [];
@@ -471,7 +509,9 @@ function sondeProgrammee() {
     sortie.point.libelle = s.nom; // le nom de la sonde voyage dans la sortie
 
     const evenement = s.evenement ?? evenementMesure;
-    if (evenement && cle) declencherIFTTT(evenement, cle, sortie);
+    if (evenement && cle) {
+      try { declencherIFTTT(evenement, cle, sortie); } catch (e) { /* canal en panne */ }
+    }
 
     const cleEtat = 'ETAT_PRECEDENT' + (s.nom ? '_' + s.nom : '');
     const precedent = prop.getProperty(cleEtat);
@@ -481,21 +521,18 @@ function sondeProgrammee() {
       // Événement nommé par la sonde et l'état : le nom porte le tri,
       // aucune applet IFTTT n'a besoin du filter code payant.
       if (baseEtat && cle) {
-        declencherIFTTT(
-          baseEtat + (s.nom ? '_' + s.nom : '') + '_' + sortie.etat.replace(/ /g, '_'),
-          cle, sortie,
-        );
+        try {
+          declencherIFTTT(
+            baseEtat + (s.nom ? '_' + s.nom : '') + '_' + sortie.etat.replace(/ /g, '_'),
+            cle, sortie,
+          );
+        } catch (e) { /* canal en panne */ }
       }
-      if (sujetNtfy) {
-        // L'en-tête Title doit rester en ASCII ; les accents vont dans le corps.
-        const titre = ('SunProbe ' + (s.nom ? s.nom + ' ' : '') + ': ' + sortie.etat)
-          .replace(/[^\x20-\x7e]/g, '-');
-        UrlFetchApp.fetch('https://ntfy.sh/' + encodeURIComponent(sujetNtfy), {
-          method: 'post',
-          payload: phraseSortie(sortie),
-          headers: { Title: titre },
-        });
-      }
+      // L'en-tête Title doit rester en ASCII ; les accents vont dans le corps.
+      const titre = ('SunProbe ' + (s.nom ? s.nom + ' ' : '') + ': ' + sortie.etat)
+        .replace(/[^\x20-\x7e]/g, '-');
+      try { notifierNtfy(prop, titre, phraseSortie(sortie)); } catch (e) { /* canal en panne */ }
+      try { notifierTelegram(prop, phraseSortie(sortie)); } catch (e) { /* canal en panne */ }
     }
 
     sorties.push(sortie);

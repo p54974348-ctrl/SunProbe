@@ -106,10 +106,12 @@ Chaque maillon a une version sans le moindre coût ni carte bancaire :
 | La page web | GitHub Pages |
 | L'API JSON publique | Apps Script (`doGet`) |
 | Mesurer toutes les heures | Déclencheur horaire Apps Script (`sondeProgrammee`) |
-| Notification mobile | Propriété `NTFY_SUJET` — [ntfy.sh](https://ntfy.sh), gratuit et sans compte : installer l'appli ntfy et s'abonner au même sujet |
+| Notification mobile | `NTFY_SUJET` — [ntfy.sh](https://ntfy.sh), gratuit. **Depuis Apps Script, ajouter `NTFY_JETON`** (compte ntfy gratuit → jeton d'accès) : les adresses IP de Google sont partagées et leur quota anonyme est souvent épuisé (erreur 429). Ou `TELEGRAM_JETON` + `TELEGRAM_CHAT` — bot Telegram, gratuit et sans limite pratique |
 | Piloter un objet connecté | Pont IFTTT (2 applets gratuites) ou Home Assistant local |
 
-La notification ntfy ne part qu'**au changement d'état** (`plein soleil` → `ombre`…) : mémoire par sonde dans `ETAT_PRECEDENT[_nom]`, pas d'alerte horaire répétitive — et pas besoin du tri payant d'IFTTT Pro. Le sujet ntfy est public par nature : en choisir un long et impossible à deviner (ex. `sonde-facade-x7k2m9`), sans y mettre de secret.
+Les notifications (ntfy, Telegram) ne partent qu'**au changement d'état** (`plein soleil` → `ombre`…) : mémoire par sonde dans `ETAT_PRECEDENT[_nom]`, pas d'alerte horaire répétitive — et pas besoin du tri payant d'IFTTT Pro. Un canal en panne est ignoré : il ne bloque ni la mesure ni les autres canaux.
+
+Mise en place Telegram, une fois : parler à [@BotFather](https://t.me/BotFather) → `/newbot` → il donne le **jeton** (`TELEGRAM_JETON`) ; envoyer `/start` à votre bot ; ouvrir `https://api.telegram.org/bot<JETON>/getUpdates` et relever `chat.id` (`TELEGRAM_CHAT`). Le sujet ntfy est public par nature : en choisir un long et impossible à deviner (ex. `sonde-facade-x7k2m9`), sans y mettre de secret.
 
 ## Option 3 — Netlify, Vercel, autres
 
