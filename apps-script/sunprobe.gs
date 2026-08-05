@@ -365,12 +365,16 @@ function phraseSortie(s) {
  * Sondes programmées : à brancher sur un déclencheur horaire Apps Script.
  *
  * Une sonde (propriétés LAT, LON, ORIENTATION, INCLINAISON) ou plusieurs :
- * la propriété SONDES accepte un tableau JSON, une entrée par surface —
- * sept façades ne coûtent qu'un appel à la source si elles partagent le
- * même point :
+ * une propriété par surface, du plus simple à saisir :
  *
- *   [{"nom":"facade_no","lat":49.54,"lon":1.10,"orientation":333},
- *    {"nom":"toit","lat":49.54,"lon":1.10,"inclinaison":30,"orientation":180}]
+ *   SONDE_facade_no = 49.54, 1.10, 333
+ *   SONDE_toit      = 49.54, 1.10, 180, 30
+ *   SONDE_terrasse  = 49.54, 1.10
+ *
+ * (« lat, lon [, orientation [, inclinaison [, albedo]]] », point décimal ;
+ *  deux valeurs = à plat, trois = mur vertical orienté. La propriété SONDES
+ *  — tableau JSON équivalent — reste acceptée et se cumule.) Sept façades
+ * ne coûtent qu'un appel à la source si elles partagent le même point.
  *
  * (orientation seule -> mur vertical, comme partout ; albedo facultatif ;
  *  "evenement" facultatif : Webhook IFTTT propre à cette sonde, à chaque
@@ -390,31 +394,61 @@ function phraseSortie(s) {
  * horaire répétitive quand rien ne change.
  */
 function listeDesSondes(prop) {
-  const brut = prop.getProperty('SONDES');
-  if (!brut) {
-    return [{
-      nom: null,
-      lat: prop.getProperty('LAT'),
-      lon: prop.getProperty('LON'),
-      orientation: prop.getProperty('ORIENTATION') ?? undefined,
-      inclinaison: prop.getProperty('INCLINAISON')
-        ?? (prop.getProperty('ORIENTATION') ? '90' : undefined),
+  const sondes = [];
+
+  // Une propriété par sonde : SONDE_<nom> = « lat, lon [, orientation
+  // [, inclinaison [, albedo]]] » — nombres à point décimal. Deux valeurs :
+  // à plat ; trois : mur vertical orienté ; quatre : inclinaison ; cinq :
+  // albédo. Le format le plus sûr à saisir dans l'interface des propriétés.
+  const toutes = prop.getProperties();
+  for (const cle of Object.keys(toutes).sort()) {
+    if (!cle.startsWith('SONDE_')) continue;
+    const champs = String(toutes[cle]).split(',').map((v) => v.trim());
+    const orientation = champs[2] !== undefined && champs[2] !== '' ? champs[2] : undefined;
+    sondes.push({
+      nom: cle.slice('SONDE_'.length),
+      lat: champs[0],
+      lon: champs[1],
+      orientation,
+      inclinaison: champs[3] !== undefined && champs[3] !== ''
+        ? champs[3]
+        : (orientation !== undefined ? '90' : undefined),
+      albedo: champs[4] !== undefined && champs[4] !== '' ? champs[4] : undefined,
       evenement: null,
-    }];
+    });
   }
-  const tableau = JSON.parse(brut);
-  if (!Array.isArray(tableau) || tableau.length === 0) {
-    throw new Error('SONDES doit être un tableau JSON non vide.');
+
+  // La propriété SONDES (tableau JSON) reste acceptée, et se cumule.
+  const brut = prop.getProperty('SONDES');
+  if (brut) {
+    const tableau = JSON.parse(brut);
+    if (!Array.isArray(tableau) || tableau.length === 0) {
+      throw new Error('SONDES doit être un tableau JSON non vide.');
+    }
+    for (const [i, s] of tableau.entries()) {
+      sondes.push({
+        nom: s.nom ?? 'sonde' + (i + 1),
+        lat: s.lat,
+        lon: s.lon,
+        orientation: s.orientation ?? undefined,
+        inclinaison: s.inclinaison ?? (s.orientation !== undefined ? '90' : undefined),
+        albedo: s.albedo ?? undefined,
+        evenement: s.evenement ?? null,
+      });
+    }
   }
-  return tableau.map((s, i) => ({
-    nom: s.nom ?? 'sonde' + (i + 1),
-    lat: s.lat,
-    lon: s.lon,
-    orientation: s.orientation ?? undefined,
-    inclinaison: s.inclinaison ?? (s.orientation !== undefined ? '90' : undefined),
-    albedo: s.albedo ?? undefined,
-    evenement: s.evenement ?? null,
-  }));
+  if (sondes.length > 0) return sondes;
+
+  // Mode historique : la sonde unique LAT / LON / ORIENTATION.
+  return [{
+    nom: null,
+    lat: prop.getProperty('LAT'),
+    lon: prop.getProperty('LON'),
+    orientation: prop.getProperty('ORIENTATION') ?? undefined,
+    inclinaison: prop.getProperty('INCLINAISON')
+      ?? (prop.getProperty('ORIENTATION') ? '90' : undefined),
+    evenement: null,
+  }];
 }
 
 function sondeProgrammee() {
@@ -467,6 +501,7 @@ function sondeProgrammee() {
     sorties.push(sortie);
   }
 
-  // Une sonde unique (mode historique) rend l'objet nu ; plusieurs, le tableau.
-  return prop.getProperty('SONDES') ? sorties : sorties[0];
+  // Configuration nommée (SONDES ou SONDE_<nom>) -> tableau ;
+  // sonde unique historique -> objet nu, comme avant.
+  return sondes.length === 1 && sondes[0].nom === null ? sorties[0] : sorties;
 }
