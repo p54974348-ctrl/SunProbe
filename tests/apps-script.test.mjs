@@ -51,6 +51,7 @@ const proprietes = {};
 const PropertiesService = { getScriptProperties: () => ({
   getProperty: (cle) => proprietes[cle] ?? null,
   setProperty: (cle, valeur) => { proprietes[cle] = String(valeur); },
+  getProperties: () => ({ ...proprietes }),
 }) };
 
 let gs;
@@ -205,3 +206,24 @@ ok('evenements d\'etat nommes par sonde',
 ok('memoire d\'etat par sonde',
    proprietes.ETAT_PRECEDENT_facade1 !== undefined
    && proprietes.ETAT_PRECEDENT_facade7 !== undefined);
+
+/* --- Une propriete par sonde : SONDE_<nom> = « lat, lon, ... » ----------- */
+
+delete proprietes.SONDES;
+proprietes.SONDE_balcon = '49.62, 1.22, 210';
+proprietes.SONDE_velux = '49.62, 1.22, 180, 20';
+proprietes.SONDE_cour = '49.62, 1.22';
+const parPropriete = gs.sondeProgrammee();
+ok('SONDE_<nom> : trois proprietes -> trois sondes nommees, triees',
+   Array.isArray(parPropriete) && parPropriete.length === 3
+   && parPropriete.map((r) => r.point.libelle).join(',') === 'balcon,cour,velux');
+ok('format positionnel : mur implicite, a plat, toit incline',
+   parPropriete[0].surface.inclinaison_deg === 90 && parPropriete[0].surface.orientation_deg === 210
+   && parPropriete[1].surface.inclinaison_deg === 0
+   && parPropriete[2].surface.inclinaison_deg === 20 && parPropriete[2].surface.orientation_deg === 180);
+
+proprietes.SONDE_cassee = '49.62, virgule,180';
+let messageCassee = '';
+try { gs.sondeProgrammee(); } catch (e) { messageCassee = String(e.message || e); }
+ok('valeur illisible -> erreur qui nomme la sonde fautive', messageCassee.includes('cassee'));
+delete proprietes.SONDE_cassee;
