@@ -32,9 +32,15 @@ let appelsSource = 0;
 let urlIFTTTRecue = null;
 const urlsIFTTT = [];
 let notificationNtfy = null;
+let ntfyEnPanne = false;
+let messageTelegram = null;
 const UrlFetchApp = { fetch(url, options) {
   if (String(url).includes('maker.ifttt.com')) { urlIFTTTRecue = String(url); urlsIFTTT.push(String(url)); return { getContentText: () => 'Congratulations!' }; }
-  if (String(url).includes('ntfy.sh')) { notificationNtfy = { url: String(url), options }; return { getContentText: () => 'ok' }; }
+  if (String(url).includes('ntfy.sh')) {
+    if (ntfyEnPanne) throw new Error('429 quota');
+    notificationNtfy = { url: String(url), options }; return { getContentText: () => 'ok' };
+  }
+  if (String(url).includes('api.telegram.org')) { messageTelegram = { url: String(url), options }; return { getContentText: () => 'ok' }; }
   appelsSource++;
   return { getContentText: () => JSON.stringify(previsions) };
 } };
@@ -227,3 +233,29 @@ let messageCassee = '';
 try { gs.sondeProgrammee(); } catch (e) { messageCassee = String(e.message || e); }
 ok('valeur illisible -> erreur qui nomme la sonde fautive', messageCassee.includes('cassee'));
 delete proprietes.SONDE_cassee;
+
+/* --- Canaux blindes : jeton ntfy, Telegram, panne ignoree ---------------- */
+
+Object.keys(proprietes).filter((c) => c.startsWith('ETAT_PRECEDENT')).forEach((c) => delete proprietes[c]);
+Object.assign(proprietes, { NTFY_JETON: 'tk_essai', TELEGRAM_JETON: '123:ABC', TELEGRAM_CHAT: '42' });
+notificationNtfy = null;
+messageTelegram = null;
+gs.sondeProgrammee();
+ok('jeton ntfy -> en-tete Authorization Bearer',
+   notificationNtfy !== null && notificationNtfy.options.headers.Authorization === 'Bearer tk_essai');
+ok('Telegram : sendMessage avec chat_id et texte',
+   messageTelegram !== null && messageTelegram.url.includes('/bot123:ABC/sendMessage')
+   && messageTelegram.options.payload.chat_id === '42'
+   && String(messageTelegram.options.payload.text).includes('score'));
+ok('les canaux demandent a ne pas lever d\'exception HTTP',
+   notificationNtfy.options.muteHttpExceptions === true
+   && messageTelegram.options.muteHttpExceptions === true);
+
+Object.keys(proprietes).filter((c) => c.startsWith('ETAT_PRECEDENT')).forEach((c) => delete proprietes[c]);
+ntfyEnPanne = true;
+messageTelegram = null;
+let sortiesMalgreLaPanne = null;
+try { sortiesMalgreLaPanne = gs.sondeProgrammee(); } catch (e) { /* ne doit pas arriver */ }
+ok('ntfy en panne (429) -> la mesure aboutit et Telegram part quand meme',
+   Array.isArray(sortiesMalgreLaPanne) && sortiesMalgreLaPanne.length > 0 && messageTelegram !== null);
+ntfyEnPanne = false;
